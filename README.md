@@ -1,6 +1,7 @@
 # Skills4Codex2rwTSL
 
 > **TSL** sucks, you need Codex.
+
 > 本仓库收录了一套面向 **TSL** 的技术文档，用于辅助 Coding Agents 自动生成、检查和调试 TSL 代码。
 
 ---
