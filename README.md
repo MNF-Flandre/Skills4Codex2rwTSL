@@ -1,8 +1,6 @@
-# Skills4Codex2rwTSL
+# **TSL** sucks, you need Codex.
 
-> **TSL** sucks, you need Codex.
-
-> 本仓库收录了一套面向 **TSL** 的技术文档，用于辅助 Coding Agents 自动生成、检查和调试 TSL 代码。
+> 本仓库收录了一套面向 **TSL** 的技术文档，旨在辅助 Coding Agents 自动生成、检查和调试 TSL 代码。
 
 ---
 
@@ -13,9 +11,9 @@
 | 文件 | 内容 |
 |------|------|
 | [`tinysoft_syntax_tutorial.md`](./tinysoft_syntax_tutorial.md) | TSL 语法与教程全量参考，共 91 页，涵盖语言基础、控制流、数据类型、TS-SQL 等核心语法内容。 |
-| [`tinysoft_functions.md`](./tinysoft_functions.md) | TSL 内建函数全量参考，共 1538 页，收录所有内建函数的签名、参数说明与示例，条目繁多，以人类可读格式呈现。 |
+| [`tinysoft_functions.md`](./tinysoft_functions.md) | TSL 内建函数全量参考，共 1538 页，收录所有内建函数的签名、参数说明与示例，条目较为繁杂。 |
 
-### Agent 精简技术文档（为 Coding Agents 优化）
+### Agent 精简技术文档
 
 | 文件 | 内容 |
 |------|------|
@@ -32,7 +30,7 @@
 
 | 文件 | 内容 |
 |------|------|
-| [`issue_log_public.md`](./issue_log_public.md) | 实际使用 TSL 过程中遇到的问题与解决方案的脱敏公开版本，已省略用户特定的函数名、赋值细节和私有调试信息。**此文件会随实际使用持续更新。** |
+| [`issue_log_public.md`](./issue_log_public.md) | 实际使用 TSL 过程中遇到的问题与解决方案的脱敏公开版本。**此文件会随实际使用持续更新。** |
 
 ---
 
