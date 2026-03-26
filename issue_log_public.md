@@ -39,29 +39,7 @@ This file is a sanitized, shareable summary of TSL issues and fixes. It omits us
   - Use per-question entry points only for inspection.
 - Status: fixed
 
-### 004 - Question numbering drift in the final answer array
-- Symptom:
-  - Several answers were shifted by one slot relative to the expected order.
-- Context:
-  - The assignment used a fixed question order and specific merge steps.
-- Root cause:
-  - One of the helper outputs was aligned differently from the assignment’s numbering.
-- Fix:
-  - Rebuild the final answer array with explicit index mapping.
-- Status: fixed
-
-### 005 - Prompt/screenshot conflict required an explicit assumption
-- Symptom:
-  - The written requirement and the example screenshot described different observation dates.
-- Context:
-  - This affected the report-based question set.
-- Root cause:
-  - The source material was internally inconsistent.
-- Fix:
-  - Follow the screenshot for the visual sample and document the assumption.
-- Status: fixed
-
-### 006 - Top-level return was not user-friendly in the UI
+### 004 - Top-level return was not user-friendly in the UI
 - Symptom:
   - The main result rendered as a compact opaque object instead of a drillable table.
 - Context:
@@ -74,7 +52,7 @@ This file is a sanitized, shareable summary of TSL issues and fixes. It omits us
 
 ## 2026-03-24
 
-### 007 - Report publish date came from the wrong field
+### 005 - Report publish date came from the wrong field
 - Symptom:
   - The report-date column returned blank or inconsistent values.
 - Context:
@@ -86,7 +64,7 @@ This file is a sanitized, shareable summary of TSL issues and fixes. It omits us
   - Keep only a narrow fallback for missing data.
 - Status: fixed
 
-### 008 - Rolling report list duplicated the newest report
+### 006 - Rolling report list duplicated the newest report
 - Symptom:
   - The newest report period appeared twice and an older period disappeared.
 - Context:
@@ -97,7 +75,7 @@ This file is a sanitized, shareable summary of TSL issues and fixes. It omits us
   - Normalize the report-period list with deduplication and a fixed cap.
 - Status: fixed
 
-### 009 - Report and market calculations used inconsistent dates
+### 007 - Report and market calculations used inconsistent dates
 - Symptom:
   - Some market-derived fields were constant across multiple report rows.
 - Context:
@@ -108,7 +86,7 @@ This file is a sanitized, shareable summary of TSL issues and fixes. It omits us
   - Recompute market-derived fields on the trading day aligned with the report release date.
 - Status: fixed
 
-### 010 - ROE needed the report-period query path
+### 008 - ROE needed the report-period query path
 - Symptom:
   - A generic recent-month data call produced ROE values that did not match the reference.
 - Context:
@@ -120,7 +98,7 @@ This file is a sanitized, shareable summary of TSL issues and fixes. It omits us
   - Keep TTM-style metrics on the recent-month path.
 - Status: fixed
 
-### 011 - Some finance ratios were still off until the publish-date context was used
+### 009 - Some finance ratios were still off until the publish-date context was used
 - Symptom:
   - ROE and PE values still diverged from the reference after earlier fixes.
 - Context:
