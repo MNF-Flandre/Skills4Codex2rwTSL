@@ -1,0 +1,107 @@
+{
+  "name": "Skills4Codex2rwTSL",
+  "version": "1.0.1",
+  "role": "agent_skill_pack",
+  "entrypoints": {
+    "syntax": "agent_skill_tsl_syntax.md",
+    "functions": "agent_skill_tsl_functions.md",
+    "pitfalls": "tsl_vs_pascal_common_pitfalls.md",
+    "issues": "issue_log_public.md"
+  },
+  "read_order": [
+    "agent_skill_tsl_syntax.md",
+    "agent_skill_tsl_functions.md",
+    "tsl_vs_pascal_common_pitfalls.md",
+    "issue_log_public.md"
+  ],
+  "function_index": [
+    {
+      "name": "SumOf",
+      "signature": "SumOf(series, n, [opts])",
+      "category": "aggregation",
+      "params": [
+        {
+          "name": "series",
+          "type": "Array|Matrix|FieldExpr"
+        },
+        {
+          "name": "n",
+          "type": "Integer"
+        },
+        {
+          "name": "opts",
+          "type": "optional"
+        }
+      ],
+      "return_type": "Number|Array",
+      "example": "SumOf([\"Close\"], 5)"
+    },
+    {
+      "name": "Spec",
+      "signature": "Spec(code, field[, options])",
+      "category": "financial_data_access",
+      "params": [
+        {
+          "name": "code",
+          "type": "String"
+        },
+        {
+          "name": "field",
+          "type": "String"
+        },
+        {
+          "name": "options",
+          "type": "optional"
+        }
+      ],
+      "return_type": "TimeSeries|Array|Matrix",
+      "example": "Spec('SZ000001', 'Close')"
+    },
+    {
+      "name": "MFind",
+      "signature": "MFind(M, cond[, returnValue])",
+      "category": "matrix_array",
+      "params": [
+        {
+          "name": "M",
+          "type": "Matrix"
+        },
+        {
+          "name": "cond",
+          "type": "Expr"
+        },
+        {
+          "name": "returnValue",
+          "type": "Boolean|optional"
+        }
+      ],
+      "return_type": "Array",
+      "example": "MFind(A, MCell>0.9, true)"
+    }
+  ],
+  "pitfall_index": [
+    {
+      "pattern": "unsupported string concatenation operator",
+      "symptom": [
+        "end not found",
+        "statement error"
+      ],
+      "fix": "replace with runtime-supported concatenation operator (prefer '$' in this repo context)"
+    },
+    {
+      "pattern": "eval receives non-string",
+      "symptom": [
+        "error type to eval"
+      ],
+      "fix": "build scalar string first, then pass to eval"
+    },
+    {
+      "pattern": "missing explicit block in nested if/else",
+      "symptom": [
+        "else binding confusion",
+        "parser cascade errors"
+      ],
+      "fix": "use explicit Begin ... End blocks for multi-statement branches"
+    }
+  ]
+}
