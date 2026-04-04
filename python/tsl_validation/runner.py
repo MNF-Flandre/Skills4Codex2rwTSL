@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from statistics import mean
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from tsl_validation.adapters.base import TSLRuntimeAdapter
 from tsl_validation.adapters.mock_adapter import MockTSLAdapter
@@ -41,7 +41,7 @@ def run_validation(
     case: ValidationCase,
     task_spec: TaskSpec,
     adapter_name: str = "mock",
-    report_path: str | None = None,
+    report_path: Optional[str] = None,
 ) -> ValidationResult:
     linter = TslLinter()
     diagnostics = linter.lint(tsl_source)
