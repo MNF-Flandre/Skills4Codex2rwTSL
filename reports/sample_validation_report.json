@@ -1,0 +1,108 @@
+{
+  "task_spec": {
+    "task_id": "ma_signal_validation",
+    "objective": "Validate TSL output against Python reference for moving-average-like logic",
+    "expected_behavior": "Core value fields should match tolerance in stable mappings",
+    "tolerance": 1e-06
+  },
+  "case": {
+    "case_id": "case_mock_pass",
+    "name": "Mock adapter pass flow",
+    "input_series": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "parameters": {
+      "window": 3,
+      "mock_bias": 0,
+      "compare_fields": [
+        "signal",
+        "value",
+        "series_tail",
+        "window"
+      ]
+    }
+  },
+  "diagnostics": [],
+  "python_reference": {
+    "signal": 0.0,
+    "value": 4,
+    "series_tail": [
+      3,
+      4,
+      5
+    ],
+    "window": 3
+  },
+  "tsl_output": {
+    "signal": 0.0,
+    "value": 4.0,
+    "series_tail": [
+      3,
+      4,
+      5
+    ],
+    "window": 3,
+    "adapter": "mock",
+    "execution_mode": "mock",
+    "note": "mock adapter output for prototype validation"
+  },
+  "metadata": {
+    "adapter": "mock",
+    "prototype_mode": "vertical_slice",
+    "todo": "TODO(integration point): replace mock adapter in real env"
+  },
+  "diff_report": {
+    "case_id": "case_mock_pass",
+    "summary": "All compared fields match",
+    "items": [
+      {
+        "field": "series_tail",
+        "python_value": [
+          3,
+          4,
+          5
+        ],
+        "tsl_value": [
+          3,
+          4,
+          5
+        ],
+        "delta": null,
+        "status": "match",
+        "reason_hint": "",
+        "suggestion": ""
+      },
+      {
+        "field": "signal",
+        "python_value": 0.0,
+        "tsl_value": 0.0,
+        "delta": 0.0,
+        "status": "match",
+        "reason_hint": "",
+        "suggestion": ""
+      },
+      {
+        "field": "value",
+        "python_value": 4,
+        "tsl_value": 4.0,
+        "delta": 0.0,
+        "status": "match",
+        "reason_hint": "",
+        "suggestion": ""
+      },
+      {
+        "field": "window",
+        "python_value": 3,
+        "tsl_value": 3,
+        "delta": 0.0,
+        "status": "match",
+        "reason_hint": "",
+        "suggestion": ""
+      }
+    ]
+  }
+}

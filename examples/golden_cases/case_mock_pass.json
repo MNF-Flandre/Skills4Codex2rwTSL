@@ -1,0 +1,10 @@
+{
+  "case_id": "case_mock_pass",
+  "name": "Mock adapter pass flow",
+  "input_series": [1, 2, 3, 4, 5],
+  "parameters": {
+    "window": 3,
+    "mock_bias": 0,
+    "compare_fields": ["signal", "value", "series_tail", "window"]
+  }
+}

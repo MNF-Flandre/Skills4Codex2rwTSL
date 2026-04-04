@@ -1,0 +1,5 @@
+begin
+avg := MA(close, 3);
+lead_signal := REF(avg, -1);
+score := avg + true;
+end

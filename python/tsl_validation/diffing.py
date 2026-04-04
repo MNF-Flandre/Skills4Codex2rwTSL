@@ -13,7 +13,11 @@ def build_diff_report(
     tsl_output: Dict[str, Any],
 ) -> DiffReport:
     items: List[DiffItem] = []
-    fields = sorted(set(python_reference.keys()) | set(tsl_output.keys()))
+    comparable_fields = set(case.parameters.get("compare_fields", []))
+    if comparable_fields:
+        fields = sorted(comparable_fields)
+    else:
+        fields = sorted(set(python_reference.keys()) | set(tsl_output.keys()))
     for field in fields:
         py = python_reference.get(field)
         tsl = tsl_output.get(field)

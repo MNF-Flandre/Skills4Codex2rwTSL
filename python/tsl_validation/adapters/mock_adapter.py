@@ -32,13 +32,15 @@ class MockTSLAdapter(TSLRuntimeAdapter):
 
         tail = values[-window:] if window > 0 else values
         baseline = mean(tail)
+        last_price = values[-1]
         bias = float(case.parameters.get("mock_bias", 0.0))
         value = baseline + bias
-        signal = 1.0 if value >= baseline else 0.0
+        signal = 1.0 if value >= last_price else 0.0
         return {
             "signal": signal,
             "value": value,
             "series_tail": tail,
+            "window": window,
             "adapter": self.name,
             "execution_mode": "mock",
             "note": "mock adapter output for prototype validation",

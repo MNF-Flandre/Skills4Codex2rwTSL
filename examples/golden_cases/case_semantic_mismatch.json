@@ -1,0 +1,9 @@
+{
+  "case_id": "case_semantic_mismatch",
+  "name": "Runnable but likely wrong semantics",
+  "input_series": [100, 98, 101, 104, 103],
+  "parameters": {
+    "window": 3,
+    "mock_bias": 0.8
+  }
+}

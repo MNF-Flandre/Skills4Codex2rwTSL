@@ -44,3 +44,60 @@
 
 ### 🏗️ v2.0（超赞画饼中）
 计划基于 **pyTSL** 构建一个**伪内联执行**版本，实现更自动化的 debug 流程——在代码执行链路中自动插入检查点，辅助定位运行时问题。
+
+
+---
+
+## 🧪 TSL Inline Validation Prototype（v0.1）
+
+新增一个可运行的纵向原型（vertical slice），目标是打通：
+
+- Run TSL Check（轻量静态检查）
+- Run Validation（Python参考 + adapter执行 + diff）
+- Show Diff Report（markdown/json）
+- Ask AI/Copilot to Fix（命令占位 + prompt 生成）
+
+### 目录
+
+- `docs/tsl_inline_validation_prototype.md`
+- `python/tsl_validation/`（lint / runner / adapters / schemas）
+- `python/ide_bridge.py`（IDE命令桥接）
+- `examples/golden_cases/`
+- `reports/`
+- `tests/`
+
+### 安装依赖
+
+当前原型只依赖 Python 标准库，无需额外安装第三方包。
+
+### 运行静态检查
+
+```bash
+PYTHONPATH=python python -m tsl_validation.cli lint examples/golden_cases/static_error_case.tsl
+```
+
+### 运行 Validation Runner（mock 模式）
+
+```bash
+PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/mock_pass_case.tsl   --case examples/golden_cases/case_mock_pass.json   --task examples/golden_cases/task_spec.json   --adapter mock   --report reports/sample_validation_report.md
+```
+
+### 没有 pyTSL 环境时
+
+使用 `--adapter mock` 跑完整链路；这是默认可演示路径。
+
+### 接入真实 pyTSL/TSLPy 时
+
+实现并替换 `python/tsl_validation/adapters/pytsl_adapter.py` 中：
+
+- `PyTSLAdapter.execute(...)`（当前为 `TODO(integration point)`）
+- 保持输出 schema 与 `ValidationResult` 对齐
+
+### IDE 命令桥接示例
+
+```bash
+PYTHONPATH=python python python/ide_bridge.py run-check --file examples/golden_cases/static_error_case.tsl
+PYTHONPATH=python python python/ide_bridge.py run-validation --file examples/golden_cases/mock_pass_case.tsl --case examples/golden_cases/case_mock_pass.json --task examples/golden_cases/task_spec.json --adapter mock --report reports/sample_validation_report.md
+PYTHONPATH=python python python/ide_bridge.py show-diff --report reports/sample_validation_report.md
+PYTHONPATH=python python python/ide_bridge.py ask-fix --file examples/golden_cases/semantic_mismatch_case.tsl --report reports/sample_validation_report.md
+```

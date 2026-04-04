@@ -1,0 +1,4 @@
+begin
+avg := MA(close, 3);
+signal := avg > close;
+end

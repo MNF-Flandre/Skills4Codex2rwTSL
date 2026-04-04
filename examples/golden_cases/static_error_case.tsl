@@ -1,0 +1,5 @@
+begin
+signal := MA(close);
+if crossup(signal, threshold) then
+  buy := true;
+end

@@ -1,0 +1,6 @@
+{
+  "task_id": "ma_signal_validation",
+  "objective": "Validate TSL output against Python reference for moving-average-like logic",
+  "expected_behavior": "Core value fields should match tolerance in stable mappings",
+  "tolerance": 1e-06
+}
