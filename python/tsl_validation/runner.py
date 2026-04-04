@@ -21,7 +21,7 @@ def _python_reference(case: ValidationCase) -> Dict[str, Any]:
     tail = values[-window:] if window > 0 else values
     value = mean(tail)
     return {
-        "signal": 1.0 if value >= values[-1] else 0.0,
+        "signal": 1.0 if value > values[-1] else 0.0,
         "value": value,
         "series_tail": tail,
         "window": window,

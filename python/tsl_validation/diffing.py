@@ -112,9 +112,9 @@ def render_markdown_report(
         [
             "",
             "## Next-Step Fix Suggestions",
-            "- 优先处理 error 级别静态诊断。",
-            "- 针对 mismatch 字段检查参数窗口、偏移和函数语义映射。",
-            "- 若使用 mock adapter，请在真实环境下替换 pyTSL adapter 并复跑。",
+            "- Prioritize static diagnostics with error severity.",
+            "- For mismatch fields, verify window size, offset semantics, and function mapping.",
+            "- If using mock adapter, replace pyTSL adapter in a real runtime environment and re-run.",
             "",
             "## TSL Source",
             "```tsl",

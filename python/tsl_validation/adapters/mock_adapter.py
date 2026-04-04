@@ -27,7 +27,7 @@ class MockTSLAdapter(TSLRuntimeAdapter):
                 "series_tail": [],
                 "adapter": self.name,
                 "execution_mode": "mock",
-                "note": "TODO(mock): replace with real TSL runtime output",
+            "note": "TODO(integration point): replace with real TSL runtime output",
             }
 
         tail = values[-window:] if window > 0 else values
@@ -35,7 +35,7 @@ class MockTSLAdapter(TSLRuntimeAdapter):
         last_price = values[-1]
         bias = float(case.parameters.get("mock_bias", 0.0))
         value = baseline + bias
-        signal = 1.0 if value >= last_price else 0.0
+        signal = 1.0 if value > last_price else 0.0
         return {
             "signal": signal,
             "value": value,
