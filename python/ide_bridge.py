@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any, Dict, List
 
 from tsl_validation.cli import _load_case, _load_task
 from tsl_validation.linting import TslLinter
@@ -15,6 +16,7 @@ def run_tsl_check(tsl_file: str) -> dict:
     return {
         "command": "Run TSL Check",
         "file": tsl_file,
+        "status": "fail" if any(d["severity"] == "error" for d in diagnostics) else "pass",
         "diagnostics": diagnostics,
         "quick_fix_suggestions": [d["suggestion"] for d in diagnostics],
     }
@@ -26,6 +28,7 @@ def run_validation_command(
     task_file: str,
     adapter: str,
     report: str,
+    mode: str,
 ) -> dict:
     source = Path(tsl_file).read_text(encoding="utf-8")
     result = run_validation(
@@ -33,38 +36,68 @@ def run_validation_command(
         case=_load_case(case_file),
         task_spec=_load_task(task_file),
         adapter_name=adapter,
+        mode=mode,
         report_path=report,
     )
     return {
         "command": "Run Validation",
         "file": tsl_file,
         "report": report,
-        "diff_summary": result.diff_report.summary,
+        "mode": mode,
+        "status": result.metadata.get("status"),
+        "failure_kind": result.metadata.get("failure_kind"),
+        "summary": result.diff_report.summary,
         "adapter": result.metadata.get("adapter"),
     }
 
 
 def show_diff_report(report_file: str) -> dict:
     p = Path(report_file)
-    return {
+    j = p.with_suffix(".json")
+    payload: Dict[str, Any] = {
         "command": "Show Diff Report",
         "file": str(p),
         "exists": p.exists(),
         "preview": p.read_text(encoding="utf-8")[:800] if p.exists() else "",
     }
+    if j.exists():
+        payload["json_report"] = str(j)
+    return payload
+
+
+def _collect_mismatch_fields(report_json: Dict[str, Any]) -> List[str]:
+    items = report_json.get("diff_report", {}).get("items", [])
+    return [item.get("field", "") for item in items if item.get("status") == "mismatch"]
 
 
 def ask_ai_to_fix(tsl_file: str, report_file: str) -> dict:
-    prompt = (
-        "You are fixing TSL code based on static diagnostics and diff report. "
-        "Focus on mismatched fields, function signatures, undefined variables, and look-ahead bias. "
-        f"TSL file: {tsl_file}; report: {report_file}. "
-        "Return patched TSL and explain key fixes."
+    source = Path(tsl_file).read_text(encoding="utf-8")
+    report_json_path = Path(report_file).with_suffix(".json")
+    report_json: Dict[str, Any] = {}
+    if report_json_path.exists():
+        report_json = json.loads(report_json_path.read_text(encoding="utf-8"))
+
+    diagnostics = report_json.get("diagnostics", [])
+    diff_summary = report_json.get("diff_report", {}).get("summary", "no diff summary available")
+    mismatch_fields = _collect_mismatch_fields(report_json)
+
+    next_action = (
+        "Fix lint errors first, then resolve oracle mismatches in key fields."
+        if diagnostics or mismatch_fields
+        else "No obvious issues found; verify business intent and rerun validation."
     )
+
     return {
         "command": "Ask AI/Copilot to Fix",
-        "integration_point": "TODO(mock): connect this payload to VS Code command/copilot chat API.",
-        "prompt": prompt,
+        "integration_point": "TODO(integration point): connect payload to VS Code command/copilot chat API.",
+        "repair_payload": {
+            "source": source,
+            "diagnostics": diagnostics,
+            "diff_summary": diff_summary,
+            "mismatch_fields": mismatch_fields,
+            "suggested_next_action": next_action,
+            "report_file": report_file,
+        },
     }
 
 
@@ -79,7 +112,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("--file", required=True)
     p_validate.add_argument("--case", required=True)
     p_validate.add_argument("--task", required=True)
-    p_validate.add_argument("--adapter", default="mock", choices=["mock", "pytsl"])
+    p_validate.add_argument("--adapter", default="auto", choices=["auto", "mock", "pytsl"])
+    p_validate.add_argument("--mode", default="oracle", choices=["smoke", "spec", "oracle"])
     p_validate.add_argument("--report", default="reports/sample_validation_report.md")
 
     p_diff = sub.add_parser("show-diff")
@@ -99,7 +133,7 @@ def main() -> int:
     if args.command == "run-check":
         payload = run_tsl_check(args.file)
     elif args.command == "run-validation":
-        payload = run_validation_command(args.file, args.case, args.task, args.adapter, args.report)
+        payload = run_validation_command(args.file, args.case, args.task, args.adapter, args.report, args.mode)
     elif args.command == "show-diff":
         payload = show_diff_report(args.report)
     else:

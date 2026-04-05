@@ -4,7 +4,12 @@
   "input_series": [1, 2, 3, 4, 5],
   "parameters": {
     "window": 3,
-    "mock_bias": 0,
-    "compare_fields": ["signal", "value", "series_tail", "window"]
+    "compare_fields": ["signal", "value", "series_tail", "window"],
+    "required_fields": ["signal", "value"],
+    "field_types": {
+      "signal": "number",
+      "value": "number",
+      "series_tail": "array"
+    }
   }
 }

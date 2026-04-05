@@ -17,13 +17,21 @@
     ],
     "parameters": {
       "window": 3,
-      "mock_bias": 0,
       "compare_fields": [
         "signal",
         "value",
         "series_tail",
         "window"
-      ]
+      ],
+      "required_fields": [
+        "signal",
+        "value"
+      ],
+      "field_types": {
+        "signal": "number",
+        "value": "number",
+        "series_tail": "array"
+      }
     }
   },
   "diagnostics": [],
@@ -39,21 +47,53 @@
   },
   "tsl_output": {
     "signal": 0.0,
-    "value": 4.0,
+    "value": 4,
+    "avg": 4,
     "series_tail": [
       3,
       4,
       5
     ],
-    "window": 3,
-    "adapter": "mock",
-    "execution_mode": "mock",
-    "note": "mock adapter output for prototype validation"
+    "window": 3
   },
   "metadata": {
     "adapter": "mock",
-    "prototype_mode": "vertical_slice",
-    "todo": "TODO(integration point): replace mock adapter in real env"
+    "execution_mode": "local_evaluator",
+    "validation_mode": "oracle",
+    "status": "pass",
+    "failure_kind": "",
+    "lint_gate": true,
+    "lint_error_count": 0,
+    "runtime_status": "ok",
+    "runtime_errors": [],
+    "spec_issues": [],
+    "mismatch_count": 0,
+    "runtime_payload": {
+      "adapter": "mock",
+      "execution_mode": "local_evaluator",
+      "runtime_status": "ok",
+      "runtime_errors": [],
+      "outputs": {
+        "signal": 0.0,
+        "value": 4,
+        "avg": 4,
+        "series_tail": [
+          3,
+          4,
+          5
+        ],
+        "window": 3
+      },
+      "intermediate": {
+        "parsed_assignments": [
+          "avg",
+          "value",
+          "signal"
+        ],
+        "todo": "TODO(integration point): replace with real runtime traces when pyTSL is wired."
+      }
+    },
+    "todo": "TODO(integration point): replace mock/local evaluator with pyTSL execution in production."
   },
   "diff_report": {
     "case_id": "case_mock_pass",
@@ -88,7 +128,7 @@
       {
         "field": "value",
         "python_value": 4,
-        "tsl_value": 4.0,
+        "tsl_value": 4,
         "delta": 0.0,
         "status": "match",
         "reason_hint": "",

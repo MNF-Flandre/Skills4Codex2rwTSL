@@ -10,7 +10,7 @@
 - case_id: `case_mock_pass`
 - name: Mock adapter pass flow
 - input_series: `[1, 2, 3, 4, 5]`
-- parameters: `{"window": 3, "mock_bias": 0, "compare_fields": ["signal", "value", "series_tail", "window"]}`
+- parameters: `{"window": 3, "compare_fields": ["signal", "value", "series_tail", "window"], "required_fields": ["signal", "value"], "field_types": {"signal": "number", "value": "number", "series_tail": "array"}}`
 
 ## Python Reference Output
 ```json
@@ -30,16 +30,14 @@
 ```json
 {
   "signal": 0.0,
-  "value": 4.0,
+  "value": 4,
+  "avg": 4,
   "series_tail": [
     3,
     4,
     5
   ],
-  "window": 3,
-  "adapter": "mock",
-  "execution_mode": "mock",
-  "note": "mock adapter output for prototype validation"
+  "window": 3
 }
 ```
 
@@ -56,7 +54,7 @@
 |---|---:|---:|---:|---|---|---|
 | series_tail | [3, 4, 5] | [3, 4, 5] |  | match | - | - |
 | signal | 0.0 | 0.0 | 0.000000 | match | - | - |
-| value | 4 | 4.0 | 0.000000 | match | - | - |
+| value | 4 | 4 | 0.000000 | match | - | - |
 | window | 3 | 3 | 0.000000 | match | - | - |
 
 ## Next-Step Fix Suggestions
@@ -68,6 +66,7 @@
 ```tsl
 begin
 avg := MA(close, 3);
+value := avg;
 signal := avg > close;
 end
 

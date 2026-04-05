@@ -4,6 +4,7 @@
   "input_series": [10, 11, 12, 13, 14],
   "parameters": {
     "window": 3,
-    "mock_bias": 0
+    "compare_fields": ["signal", "value"],
+    "required_fields": ["signal", "value"]
   }
 }

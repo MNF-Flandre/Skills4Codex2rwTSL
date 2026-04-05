@@ -1,5 +1,6 @@
 begin
 signal := MA(close);
+x := y + 1;
 if crossup(signal, threshold) then
   buy := true;
 end

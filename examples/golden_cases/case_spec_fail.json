@@ -1,12 +1,9 @@
 {
-  "case_id": "case_semantic_mismatch",
-  "name": "Runnable but likely wrong semantics",
-  "input_series": [100, 98, 101, 104, 103],
+  "case_id": "case_spec_fail",
+  "name": "Smoke pass but spec fail due to missing signal",
+  "input_series": [10, 10, 11, 12, 13],
   "parameters": {
     "window": 3,
-    "python_reference": {
-      "window": 2
-    },
     "compare_fields": ["signal", "value"],
     "required_fields": ["signal", "value"],
     "field_types": {

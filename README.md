@@ -101,3 +101,61 @@ PYTHONPATH=python python python/ide_bridge.py run-validation --file examples/gol
 PYTHONPATH=python python python/ide_bridge.py show-diff --report reports/sample_validation_report.md
 PYTHONPATH=python python python/ide_bridge.py ask-fix --file examples/golden_cases/semantic_mismatch_case.tsl --report reports/sample_validation_report.md
 ```
+
+
+### 执行式验证模式（smoke/spec/oracle）
+
+`validate` 命令支持三档模式：
+
+- `smoke`：只验证“能执行、无运行时异常、输出结构可返回”
+- `spec`：在 smoke 基础上校验输出字段/类型/缺失值
+- `oracle`：在 spec 基础上执行 Python reference vs runtime 输出关键字段对拍（最终 correctness 判定）
+
+推荐顺序：`smoke -> spec -> oracle`。
+
+### Mock/Local Evaluator 子集（对源码敏感）
+
+当前 mock adapter 不再仅依赖 case 参数，而是读取 `tsl_source` 并求值以下最小子集：
+
+- 赋值语句：`x := expr;`
+- 函数：`MA(close, n)`、`REF(x, k)`
+- 运算：`+ - * /`，比较 `> < >= <= =`（内部归一为 `==`）
+- 布尔：`true / false`
+- 变量引用与中间变量链式计算
+
+> 这是一个 very small evaluator，用于验证工程链路可行性；不是完整 TSL 编译器。
+
+### CLI gate 退出码语义
+
+`python -m tsl_validation.cli` 的退出码：
+
+- `0`：通过
+- `1`：lint error / runtime failure / spec failure
+- `2`：oracle diff mismatch
+- `3`：usage/configuration error（例如缺失 case 文件）
+
+示例：
+
+```bash
+PYTHONPATH=python python -m tsl_validation.cli validate \
+  examples/golden_cases/mock_pass_case.tsl \
+  --case examples/golden_cases/case_mock_pass.json \
+  --task examples/golden_cases/task_spec.json \
+  --adapter auto \
+  --mode oracle \
+  --report reports/sample_validation_report.md
+```
+
+### pyTSL 集成说明（保持 adapter 边界）
+
+`python/tsl_validation/adapters/pytsl_adapter.py` 已支持：
+
+- 运行环境检测（`pytsl`/`tslpy` 包可用性）
+- 配置检测（`PYTSL_SERVER`、`PYTSL_RUNTIME`、`PYTSL_AUTH_TOKEN` 等）
+- 未就绪时返回结构化 graceful failure（而非直接抛异常）
+
+真实接入需在 `PyTSLAdapter.execute()` 中替换 `TODO(integration point)`，并保持输出 schema：
+
+- `adapter` / `execution_mode` / `runtime_status` / `runtime_errors`
+- `outputs`（至少与 compare/required 字段对齐）
+- `integration`（环境与对接元数据）

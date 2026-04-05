@@ -27,6 +27,13 @@
 - Stage 3 直接验证“结果正确性”，并把静态诊断、运行元数据、差异分析串成闭环。
 - 因此 Stage 2 是过滤器，Stage 3 才是可演示、可扩展的验证主链路。
 
+### 3.1 执行式验证模式分层（新增）
+- `smoke`：仅验证可执行性（是否成功执行、是否有运行时异常、是否产生结构化输出）。
+- `spec`：在 smoke 之上验证输出 schema（字段存在性、类型、缺失值）。
+- `oracle`：在 spec 之上执行 Python 参考值与 runtime 输出关键字段对拍并产出 diff。最终 gate 以执行式验证结果为主。
+
+结论：静态 lint 只做高价值早筛；`oracle` 执行式验证负责 correctness 定生死。
+
 ## 4. 原型范围（Prototype Scope）
 本原型聚焦“可运行 vertical slice”，不尝试实现完整编译器或完整 pyTSL 运行时：
 - ✅ 轻量静态检查器 + CLI
@@ -62,3 +69,12 @@
 3. 在 VS Code 扩展中接入命令：Run TSL Check / Run Validation / Show Diff / Ask AI to Fix。
 4. 增加批量回归与黄金样例管理（基线快照、趋势对比）。
 5. 引入更细粒度中间量对齐（逐 bar / 逐步骤 trace diff）。
+
+
+## 7. pyTSL 集成点（更新）
+真实 pyTSL/TSLPy 对接仍通过 adapter 边界完成，不直接耦合 runner：
+
+- 入口：`python/tsl_validation/adapters/pytsl_adapter.py`
+- 环境检测：包可用性 + `PYTSL_SERVER` / `PYTSL_RUNTIME` / `PYTSL_AUTH_TOKEN` 等配置
+- 未就绪行为：返回结构化 `runtime_status=failed` 和 `runtime_errors`，便于 CLI/IDE graceful 处理
+- 对接约束：替换 `TODO(integration point)` 时，必须保持输出结构契约（adapter/runtime status/errors/outputs）

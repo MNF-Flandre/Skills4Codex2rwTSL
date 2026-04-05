@@ -1,0 +1,4 @@
+begin
+drift := date + 1;
+flag := time / 2;
+end
