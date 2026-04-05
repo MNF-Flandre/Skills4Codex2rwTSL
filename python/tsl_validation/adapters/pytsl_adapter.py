@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import inspect
 import math
 import os
 from typing import Any, Dict, List, Optional, Tuple
@@ -18,6 +19,11 @@ class PyTSLAdapter(TSLRuntimeAdapter):
     """
 
     name = "pytsl"
+    DEFAULT_OUTPUT_FIELDS = ["signal", "value", "series_tail", "window"]
+    PROBLEM_RUNTIME_PACKAGE_MISSING = "runtime_package_missing"
+    PROBLEM_RUNTIME_CONFIG_MISSING = "runtime_config_missing"
+    PROBLEM_RUNTIME_CASE_MISSING = "runtime_case_missing"
+    PROBLEM_EXECUTE_PATH_NOT_IMPLEMENTED = "execute_path_not_implemented"
 
     def _runtime_case(self, case: ValidationCase) -> Dict[str, Any]:
         runtime_case = case.parameters.get("runtime_case", {})
@@ -118,15 +124,23 @@ class PyTSLAdapter(TSLRuntimeAdapter):
 
         problems: List[str] = []
         if not package_ready:
-            problems.append("runtime_package_missing")
+            problems.append(self.PROBLEM_RUNTIME_PACKAGE_MISSING)
         if not config_ready:
-            problems.append(f"runtime_config_missing:{','.join(missing_config)}")
+            problems.append(
+                {
+                    "kind": self.PROBLEM_RUNTIME_CONFIG_MISSING,
+                    "missing": missing_config,
+                }
+            )
         if case_req.get("is_live_case") and not case_ready:
             problems.append(
-                "runtime_case_missing:" + ",".join(case_req.get("missing_live_fields", []))
+                {
+                    "kind": self.PROBLEM_RUNTIME_CASE_MISSING,
+                    "missing": case_req.get("missing_live_fields", []),
+                }
             )
         if not implemented:
-            problems.append("execute_path_not_implemented")
+            problems.append(self.PROBLEM_EXECUTE_PATH_NOT_IMPLEMENTED)
 
         overall_ready = package_ready and config_ready and case_ready and implemented
 
@@ -159,9 +173,10 @@ class PyTSLAdapter(TSLRuntimeAdapter):
 
     def _connect(self, runtime_module: Any, runtime_config: Dict[str, Any]) -> Tuple[Optional[Any], Dict[str, Any]]:
         # TODO(integration point): replace heuristic with concrete pyTSL/TSLPy connect call.
-        if hasattr(runtime_module, "connect") and callable(getattr(runtime_module, "connect")):
+        connect_fn = getattr(runtime_module, "connect", None)
+        if callable(connect_fn):
             try:
-                conn = runtime_module.connect(
+                conn = connect_fn(
                     server=runtime_config.get("server"),
                     runtime=runtime_config.get("runtime"),
                     auth=runtime_config.get("auth"),
@@ -218,14 +233,16 @@ class PyTSLAdapter(TSLRuntimeAdapter):
 
         # TODO(integration point): replace generic execute/run calling with concrete SDK API.
         execute_fn = None
-        if hasattr(connection, "execute") and callable(getattr(connection, "execute")):
-            execute_fn = getattr(connection, "execute")
-        elif hasattr(connection, "run") and callable(getattr(connection, "run")):
-            execute_fn = getattr(connection, "run")
-        elif hasattr(runtime_module, "execute") and callable(getattr(runtime_module, "execute")):
-            execute_fn = getattr(runtime_module, "execute")
-        elif hasattr(runtime_module, "run") and callable(getattr(runtime_module, "run")):
-            execute_fn = getattr(runtime_module, "run")
+        for obj, name in [
+            (connection, "execute"),
+            (connection, "run"),
+            (runtime_module, "execute"),
+            (runtime_module, "run"),
+        ]:
+            fn = getattr(obj, name, None)
+            if callable(fn):
+                execute_fn = fn
+                break
 
         if execute_fn is None:
             return None, {
@@ -240,19 +257,18 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             }
 
         try:
-            raw_result = execute_fn(payload)
+            sig = inspect.signature(execute_fn)
+            params = sig.parameters
+            if len(params) == 1 and "payload" in params:
+                raw_result = execute_fn(payload)
+            elif "tsl_source" in params:
+                raw_result = execute_fn(
+                    tsl_source=tsl_source,
+                    **{k: v for k, v in payload.items() if k != "tsl_source"},
+                )
+            else:
+                raw_result = execute_fn(payload)
             return raw_result, {"ok": True, "stage": "execute", "error": ""}
-        except TypeError:
-            try:
-                raw_result = execute_fn(tsl_source=tsl_source, **{k: v for k, v in payload.items() if k != "tsl_source"})
-                return raw_result, {
-                    "ok": True,
-                    "stage": "execute",
-                    "error": "",
-                    "todo": "TODO(integration point): normalize final execute signature once SDK contract is fixed.",
-                }
-            except Exception as exc:
-                return None, {"ok": False, "stage": "execute", "error": str(exc)}
         except Exception as exc:
             return None, {"ok": False, "stage": "execute", "error": str(exc)}
 
@@ -281,7 +297,9 @@ class PyTSLAdapter(TSLRuntimeAdapter):
         output_fields = list(case.parameters.get("output_fields", []))
         compare_fields = list(case.parameters.get("compare_fields", []))
         required_fields = list(case.parameters.get("required_fields", []))
-        wanted = list(dict.fromkeys(output_fields + compare_fields + required_fields + ["signal", "value", "series_tail", "window"]))
+        wanted = list(
+            dict.fromkeys(output_fields + compare_fields + required_fields + self.DEFAULT_OUTPUT_FIELDS)
+        )
 
         outputs: Dict[str, Any] = {}
         source_map: Dict[str, Any] = {}

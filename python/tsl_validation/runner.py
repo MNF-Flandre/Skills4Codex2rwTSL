@@ -288,7 +288,12 @@ def run_validation(
         runtime_stage = integration.get("stage", "")
         if runtime_stage == "preflight":
             problems = integration.get("preflight", {}).get("problems", [])
-            if any(str(p).startswith("runtime_config_missing") for p in problems):
+            def _problem_kind(item: Any) -> str:
+                if isinstance(item, dict):
+                    return str(item.get("kind", ""))
+                return str(item)
+            kinds = {_problem_kind(p) for p in problems}
+            if "runtime_config_missing" in kinds:
                 failure_kind = "config_failure"
             else:
                 failure_kind = "preflight_failure"

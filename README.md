@@ -269,6 +269,8 @@ live 关键字段放在：
 - `extra_system_params`
 - `output_fields`
 
+日期格式约定：`start_date/end_date` 使用 `YYYY-MM-DD`。
+
 旧 mock case 仍兼容（`input_series` + 既有 parameters）。
 
 #### 3) preflight
@@ -313,4 +315,3 @@ PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/
 
 仍需本地补充：
 - 真实 pyTSL SDK 精确 connect/execute 签名与返回结构映射（文件内已显式 `TODO(integration point)`）
-

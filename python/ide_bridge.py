@@ -104,7 +104,15 @@ def ask_ai_to_fix(tsl_file: str, report_file: str) -> dict:
     report_json_path = Path(report_file).with_suffix(".json")
     report_json: Dict[str, Any] = {}
     if report_json_path.exists():
-        report_json = json.loads(report_json_path.read_text(encoding="utf-8"))
+        try:
+            report_json = json.loads(report_json_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            report_json = {
+                "metadata": {
+                    "failure_kind": "report_json_decode_error",
+                    "runtime_errors": [f"failed to parse report json: {report_json_path}: {exc}"],
+                }
+            }
 
     diagnostics = report_json.get("diagnostics", [])
     metadata = report_json.get("metadata", {})
