@@ -9,9 +9,15 @@ from tsl_validation.schemas import TaskSpec, ValidationCase
 
 
 class PyTSLAdapter(TSLRuntimeAdapter):
-    """Integration point for real pyTSL/TSLPy runtime."""
+    """Integration point for real pyTSL/TSLPy runtime.
+
+    execute path stays intentionally unimplemented until real SDK contract is wired.
+    """
 
     name = "pytsl"
+
+    def is_implemented(self) -> bool:
+        return False
 
     def check_environment(self) -> Dict[str, Any]:
         package_candidates = ["pytsl", "tslpy"]
@@ -32,6 +38,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
         available = bool(found_packages) and not missing_required
         return {
             "available": available,
+            "implemented": self.is_implemented(),
             "packages": found_packages,
             "runtime_config": runtime_config,
             "missing_required": missing_required,
@@ -64,16 +71,31 @@ class PyTSLAdapter(TSLRuntimeAdapter):
                 },
             }
 
+        if not env_info["implemented"]:
+            return {
+                "adapter": self.name,
+                "execution_mode": "pytsl",
+                "runtime_status": "failed",
+                "runtime_errors": [
+                    "TODO(integration point): pyTSL execute path is not implemented yet despite environment readiness."
+                ],
+                "outputs": {},
+                "integration": {
+                    "environment": env_info,
+                    "todo": "TODO(integration point): implement real execute and return runtime outputs.",
+                },
+            }
+
         return {
             "adapter": self.name,
             "execution_mode": "pytsl",
             "runtime_status": "failed",
             "runtime_errors": [
-                "TODO(integration point): environment appears ready but real pyTSL execute path is not implemented yet."
+                "TODO(integration point): real pyTSL call path placeholder; return mapped outputs when integrated."
             ],
             "outputs": {},
             "integration": {
                 "environment": env_info,
-                "todo": "TODO(integration point): implement real execute and return runtime outputs.",
+                "todo": "TODO(integration point): replace placeholder with production pyTSL invocation.",
             },
         }

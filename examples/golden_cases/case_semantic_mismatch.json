@@ -3,6 +3,7 @@
   "name": "Runnable but likely wrong semantics",
   "input_series": [100, 98, 101, 104, 103],
   "parameters": {
+    "reference_strategy": "moving_average_signal",
     "window": 3,
     "python_reference": {
       "window": 2

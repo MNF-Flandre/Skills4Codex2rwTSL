@@ -1,0 +1,8 @@
+begin
+avg := MA(close, 3);
+prev := REF(avg, 1);
+spread := ABS(avg - prev);
+guard := NOT (spread < 0.1);
+value := MAX(spread, MIN(avg, close));
+signal := (value > close) AND guard;
+end

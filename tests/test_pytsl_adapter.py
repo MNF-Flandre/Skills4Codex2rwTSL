@@ -16,6 +16,12 @@ class TestPyTSLAdapter(unittest.TestCase):
         self.assertIn("runtime_errors", payload)
         self.assertIn("integration", payload)
 
+    def test_check_environment_contains_implemented_flag(self):
+        adapter = PyTSLAdapter()
+        info = adapter.check_environment()
+        self.assertIn("implemented", info)
+        self.assertFalse(info["implemented"])
+
 
 if __name__ == "__main__":
     unittest.main()

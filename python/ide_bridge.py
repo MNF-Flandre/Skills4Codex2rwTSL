@@ -29,6 +29,7 @@ def run_validation_command(
     adapter: str,
     report: str,
     mode: str,
+    lint_policy: str,
 ) -> dict:
     source = Path(tsl_file).read_text(encoding="utf-8")
     result = run_validation(
@@ -37,6 +38,7 @@ def run_validation_command(
         task_spec=_load_task(task_file),
         adapter_name=adapter,
         mode=mode,
+        lint_policy=lint_policy,
         report_path=report,
     )
     return {
@@ -44,6 +46,7 @@ def run_validation_command(
         "file": tsl_file,
         "report": report,
         "mode": mode,
+        "lint_policy": lint_policy,
         "status": result.metadata.get("status"),
         "failure_kind": result.metadata.get("failure_kind"),
         "summary": result.diff_report.summary,
@@ -70,6 +73,17 @@ def _collect_mismatch_fields(report_json: Dict[str, Any]) -> List[str]:
     return [item.get("field", "") for item in items if item.get("status") == "mismatch"]
 
 
+def _preview_prompt(payload: Dict[str, Any]) -> str:
+    return (
+        "You are fixing TSL code for validation failure. "
+        f"Mode={payload.get('validation_mode')} Failure={payload.get('failure_kind')}. "
+        f"Reference strategy={payload.get('reference_strategy')}, Adapter={payload.get('runtime_adapter')}. "
+        f"Focus mismatch fields: {', '.join(payload.get('mismatch_fields', [])[:5]) or 'none'}. "
+        f"Runtime errors: {payload.get('runtime_errors', [])[:2]}. "
+        f"Suggested action: {payload.get('suggested_next_action')}"
+    )
+
+
 def ask_ai_to_fix(tsl_file: str, report_file: str) -> dict:
     source = Path(tsl_file).read_text(encoding="utf-8")
     report_json_path = Path(report_file).with_suffix(".json")
@@ -78,26 +92,44 @@ def ask_ai_to_fix(tsl_file: str, report_file: str) -> dict:
         report_json = json.loads(report_json_path.read_text(encoding="utf-8"))
 
     diagnostics = report_json.get("diagnostics", [])
+    metadata = report_json.get("metadata", {})
+    case_info = report_json.get("case", {})
     diff_summary = report_json.get("diff_report", {}).get("summary", "no diff summary available")
     mismatch_fields = _collect_mismatch_fields(report_json)
+    runtime_payload = metadata.get("runtime_payload", {})
 
     next_action = (
-        "Fix lint errors first, then resolve oracle mismatches in key fields."
+        "Fix lint/schema errors first, then align mismatch fields with oracle reference strategy."
         if diagnostics or mismatch_fields
-        else "No obvious issues found; verify business intent and rerun validation."
+        else "No obvious mismatch; verify strategy intent and rerun oracle mode."
     )
+
+    repair_payload = {
+        "source": source,
+        "diagnostics": diagnostics,
+        "validation_mode": metadata.get("validation_mode"),
+        "failure_kind": metadata.get("failure_kind"),
+        "diff_summary": diff_summary,
+        "mismatch_fields": mismatch_fields,
+        "reference_strategy": metadata.get("reference_strategy"),
+        "runtime_adapter": metadata.get("adapter"),
+        "runtime_errors": metadata.get("runtime_errors", []),
+        "runtime_intermediate_trace": runtime_payload.get("intermediate", {}).get("trace", []),
+        "runtime_final_env": runtime_payload.get("intermediate", {}).get("final_env", {}),
+        "suggested_next_action": next_action,
+        "minimal_repro_case": {
+            "case_id": case_info.get("case_id"),
+            "input_series": case_info.get("input_series"),
+            "parameters": case_info.get("parameters"),
+        },
+        "report_file": report_file,
+    }
+    repair_payload["repair_prompt_preview"] = _preview_prompt(repair_payload)
 
     return {
         "command": "Ask AI/Copilot to Fix",
         "integration_point": "TODO(integration point): connect payload to VS Code command/copilot chat API.",
-        "repair_payload": {
-            "source": source,
-            "diagnostics": diagnostics,
-            "diff_summary": diff_summary,
-            "mismatch_fields": mismatch_fields,
-            "suggested_next_action": next_action,
-            "report_file": report_file,
-        },
+        "repair_payload": repair_payload,
     }
 
 
@@ -114,6 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("--task", required=True)
     p_validate.add_argument("--adapter", default="auto", choices=["auto", "mock", "pytsl"])
     p_validate.add_argument("--mode", default="oracle", choices=["smoke", "spec", "oracle"])
+    p_validate.add_argument("--lint-policy", default="warn", choices=["block", "warn", "off"])
     p_validate.add_argument("--report", default="reports/sample_validation_report.md")
 
     p_diff = sub.add_parser("show-diff")
@@ -133,7 +166,15 @@ def main() -> int:
     if args.command == "run-check":
         payload = run_tsl_check(args.file)
     elif args.command == "run-validation":
-        payload = run_validation_command(args.file, args.case, args.task, args.adapter, args.report, args.mode)
+        payload = run_validation_command(
+            args.file,
+            args.case,
+            args.task,
+            args.adapter,
+            args.report,
+            args.mode,
+            args.lint_policy,
+        )
     elif args.command == "show-diff":
         payload = show_diff_report(args.report)
     else:

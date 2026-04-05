@@ -1,10 +1,11 @@
 {
-  "case_id": "case_spec_fail",
-  "name": "Smoke pass but spec fail due to missing signal",
-  "input_series": [10, 10, 11, 12, 13],
+  "case_id": "case_complex_logic",
+  "name": "Local evaluator complex trace case",
+  "input_series": [8, 9, 7, 11, 10, 12],
   "parameters": {
     "reference_strategy": "moving_average_signal",
     "window": 3,
+    "output_fields": ["signal", "value", "avg", "spread", "guard"],
     "compare_fields": ["signal", "value"],
     "required_fields": ["signal", "value"],
     "field_types": {

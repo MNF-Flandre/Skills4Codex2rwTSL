@@ -36,12 +36,30 @@ class TestCliExitCodes(unittest.TestCase):
             "mock",
             "--mode",
             "oracle",
+            "--lint-policy",
+            "warn",
             "--report",
             str(report_path),
-            "--no-lint-gate",
         ])
         self.assertEqual(code, 2)
         self.assertEqual(payload.get("failure_kind"), "oracle_mismatch")
+
+    def test_lint_policy_block_in_cli(self):
+        code, payload = run_cli([
+            "validate",
+            "examples/golden_cases/static_error_case.tsl",
+            "--case",
+            "examples/golden_cases/case_static_error.json",
+            "--task",
+            "examples/golden_cases/task_spec.json",
+            "--mode",
+            "smoke",
+            "--lint-policy",
+            "block",
+        ])
+        self.assertEqual(code, 1)
+        self.assertEqual(payload.get("failure_kind"), "lint_error")
+        self.assertTrue(payload.get("result", {}).get("metadata", {}).get("runtime_skipped"))
 
     def test_config_error_exit_code(self):
         code, payload = run_cli([

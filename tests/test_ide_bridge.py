@@ -40,6 +40,8 @@ class TestIdeBridge(unittest.TestCase):
             "oracle",
             "--adapter",
             "mock",
+            "--lint-policy",
+            "warn",
             "--report",
             str(report_path),
         ])
@@ -48,7 +50,7 @@ class TestIdeBridge(unittest.TestCase):
         self.assertIn("status", payload)
         self.assertIn("summary", payload)
 
-    def test_ask_fix_payload_structure(self):
+    def test_ask_fix_payload_structure_and_preview(self):
         report_path = Path(tempfile.gettempdir()) / "bridge_fix_report.md"
         _run([
             "run-validation",
@@ -62,6 +64,8 @@ class TestIdeBridge(unittest.TestCase):
             "oracle",
             "--adapter",
             "mock",
+            "--lint-policy",
+            "warn",
             "--report",
             str(report_path),
         ])
@@ -74,8 +78,24 @@ class TestIdeBridge(unittest.TestCase):
         ])
         self.assertIn("repair_payload", payload)
         rp = payload["repair_payload"]
-        for key in ["source", "diagnostics", "diff_summary", "mismatch_fields", "suggested_next_action"]:
+        for key in [
+            "source",
+            "diagnostics",
+            "validation_mode",
+            "failure_kind",
+            "diff_summary",
+            "mismatch_fields",
+            "reference_strategy",
+            "runtime_adapter",
+            "runtime_errors",
+            "runtime_intermediate_trace",
+            "runtime_final_env",
+            "suggested_next_action",
+            "minimal_repro_case",
+            "repair_prompt_preview",
+        ]:
             self.assertIn(key, rp)
+        self.assertTrue(rp["repair_prompt_preview"])
 
 
 if __name__ == "__main__":

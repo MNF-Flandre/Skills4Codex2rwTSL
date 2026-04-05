@@ -3,6 +3,7 @@
   "name": "Mock adapter pass flow",
   "input_series": [1, 2, 3, 4, 5],
   "parameters": {
+    "reference_strategy": "moving_average_signal",
     "window": 3,
     "compare_fields": ["signal", "value", "series_tail", "window"],
     "required_fields": ["signal", "value"],

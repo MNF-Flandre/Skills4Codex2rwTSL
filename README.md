@@ -159,3 +159,65 @@ PYTHONPATH=python python -m tsl_validation.cli validate \
 - `adapter` / `execution_mode` / `runtime_status` / `runtime_errors`
 - `outputs`（至少与 compare/required 字段对齐）
 - `integration`（环境与对接元数据）
+
+
+### Reference Strategy（Oracle Reference Layer）
+
+`runner` 现在支持可配置 reference strategy（优先从 `case.parameters.reference_strategy` / `case.parameters.python_reference` 读取）：
+
+- `moving_average_signal`：基于窗口均值产生 `value/signal`
+- `last_value`：以最后一个点作为 `value`
+- `identity`：恒等映射（可配 threshold）
+- `custom_case_config`：由 case 明确提供 `custom_outputs`
+
+`python_reference` 结构化输出包括：
+- `outputs`
+- `reference_strategy`
+- `reference_metadata`
+- `intermediate`
+
+### Lint Policy（执行策略）
+
+`validate` 支持 lint policy：
+
+- `block`：有 lint error 直接短路，不执行 runtime
+- `warn`：记录 lint error，继续执行 runtime（默认）
+- `off`：忽略 lint gate
+
+CLI 示例：
+
+```bash
+PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/static_error_case.tsl   --case examples/golden_cases/case_static_error.json   --task examples/golden_cases/task_spec.json   --mode smoke   --lint-policy block
+```
+
+### Auto Adapter Fallback（稳态选路）
+
+`--adapter auto` 现在只有在以下条件都满足时才选 pyTSL：
+1. 环境 ready（包 + 必要配置）
+2. execute path 已实现（`implemented=true`）
+
+否则自动回退到 mock/local evaluator，并在 metadata 中记录：
+- `requested_adapter`
+- `actual_adapter`
+- `fallback_used`
+- `fallback_reason`
+
+### Local Evaluator Trace（可解释执行）
+
+mock/local evaluator 除 outputs 外还返回：
+- `intermediate.parsed_assignments`
+- `intermediate.trace`
+- `intermediate.final_env`
+- `intermediate.support_scope`
+
+用于定位语义偏差，不把 prototype 引向完整编译器。
+
+### Ask-Fix Payload（增强）
+
+`ide_bridge.py ask-fix` 的 payload 现包含：
+- 源码、diagnostics、mode、failure_kind、diff summary
+- mismatch fields、reference strategy、runtime adapter/errors
+- runtime intermediate trace/final_env
+- minimal repro case
+- `repair_prompt_preview`（可直接用于 Copilot/Codex 输入）
+

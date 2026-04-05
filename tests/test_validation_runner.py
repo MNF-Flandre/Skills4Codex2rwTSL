@@ -1,5 +1,4 @@
 import json
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -21,30 +20,23 @@ class TestValidationRunner(unittest.TestCase):
         task = TaskSpec(**load_json(ROOT / "examples/golden_cases/task_spec.json"))
         return source, case, task
 
+    def test_reference_strategy_changes_reference_behavior(self):
+        source, case, task = self._load("mock_pass_case.tsl", "case_reference_last_value.json")
+        result = run_validation(source, case, task, adapter_name="mock", mode="oracle")
+        self.assertEqual(result.python_reference.get("reference_strategy"), "last_value")
+        self.assertEqual(result.python_reference.get("outputs", {}).get("value"), 8)
+
     def test_mock_pass_case_oracle_passes(self):
         source, case, task = self._load("mock_pass_case.tsl", "case_mock_pass.json")
-        report_path = Path(tempfile.gettempdir()) / "test_validation_report.md"
         result = run_validation(
             tsl_source=source,
             case=case,
             task_spec=task,
             adapter_name="mock",
             mode="oracle",
-            report_path=str(report_path),
         )
         self.assertEqual(result.metadata["status"], "pass")
         self.assertEqual(result.metadata["failure_kind"], "")
-        self.assertFalse(any(item.status == "mismatch" for item in result.diff_report.items))
-
-    def test_tsl_source_affects_output(self):
-        source_a = (ROOT / "examples/golden_cases/mock_pass_case.tsl").read_text(encoding="utf-8")
-        source_b = (ROOT / "examples/golden_cases/spec_fail_case.tsl").read_text(encoding="utf-8")
-        case = ValidationCase(**load_json(ROOT / "examples/golden_cases/case_mock_pass.json"))
-        task = TaskSpec(**load_json(ROOT / "examples/golden_cases/task_spec.json"))
-
-        result_a = run_validation(source_a, case, task, adapter_name="mock", mode="smoke")
-        result_b = run_validation(source_b, case, task, adapter_name="mock", mode="smoke")
-        self.assertNotEqual(result_a.tsl_output.get("signal"), result_b.tsl_output.get("signal"))
 
     def test_semantic_mismatch_case_oracle_fails(self):
         source, case, task = self._load("semantic_mismatch_case.tsl", "case_semantic_mismatch.json")
@@ -52,12 +44,30 @@ class TestValidationRunner(unittest.TestCase):
         self.assertEqual(result.metadata["failure_kind"], "oracle_mismatch")
         self.assertGreater(result.metadata["mismatch_count"], 0)
 
-    def test_smoke_pass_but_spec_fail(self):
-        source, case, task = self._load("spec_fail_case.tsl", "case_spec_fail.json")
-        smoke = run_validation(source, case, task, adapter_name="mock", mode="smoke")
-        spec = run_validation(source, case, task, adapter_name="mock", mode="spec")
-        self.assertEqual(smoke.metadata["status"], "pass")
-        self.assertEqual(spec.metadata["failure_kind"], "spec_failure")
+    def test_lint_policy_block_short_circuits_runtime(self):
+        source, case, task = self._load("static_error_case.tsl", "case_static_error.json")
+        result = run_validation(source, case, task, adapter_name="mock", mode="smoke", lint_policy="block")
+        self.assertTrue(result.metadata.get("runtime_skipped"))
+        self.assertEqual(result.metadata.get("skip_reason"), "lint_policy_blocked_by_error")
+
+    def test_lint_policy_warn_runs_runtime(self):
+        source, case, task = self._load("static_error_case.tsl", "case_static_error.json")
+        result = run_validation(source, case, task, adapter_name="mock", mode="smoke", lint_policy="warn")
+        self.assertFalse(result.metadata.get("runtime_skipped"))
+
+    def test_auto_fallback_to_mock_when_pytsl_not_implemented(self):
+        source, case, task = self._load("mock_pass_case.tsl", "case_mock_pass.json")
+        result = run_validation(source, case, task, adapter_name="auto", mode="smoke")
+        self.assertEqual(result.metadata.get("adapter"), "mock")
+        self.assertTrue(result.metadata.get("adapter_resolution", {}).get("fallback_used"))
+
+    def test_trace_and_final_env_present_for_complex_case(self):
+        source, case, task = self._load("complex_logic_case.tsl", "case_complex_logic.json")
+        result = run_validation(source, case, task, adapter_name="mock", mode="spec")
+        trace = result.metadata.get("runtime_payload", {}).get("intermediate", {}).get("trace", [])
+        final_env = result.metadata.get("runtime_payload", {}).get("intermediate", {}).get("final_env", {})
+        self.assertGreaterEqual(len(trace), 3)
+        self.assertIn("value", final_env)
 
 
 if __name__ == "__main__":

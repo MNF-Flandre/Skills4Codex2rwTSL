@@ -1,0 +1,14 @@
+{
+  "case_id": "case_reference_last_value",
+  "name": "Reference strategy last value",
+  "input_series": [3, 6, 9, 8],
+  "parameters": {
+    "reference_strategy": "last_value",
+    "compare_fields": ["signal", "value"],
+    "required_fields": ["signal", "value"],
+    "field_types": {
+      "signal": "number",
+      "value": "number"
+    }
+  }
+}

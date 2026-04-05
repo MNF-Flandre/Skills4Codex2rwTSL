@@ -78,3 +78,36 @@
 - 环境检测：包可用性 + `PYTSL_SERVER` / `PYTSL_RUNTIME` / `PYTSL_AUTH_TOKEN` 等配置
 - 未就绪行为：返回结构化 `runtime_status=failed` 和 `runtime_errors`，便于 CLI/IDE graceful 处理
 - 对接约束：替换 `TODO(integration point)` 时，必须保持输出结构契约（adapter/runtime status/errors/outputs）
+
+
+## 8. Oracle Reference Layer（本轮强化）
+- Reference 不再是单一均值函数，而是 strategy 驱动。
+- 当前可用策略：`moving_average_signal` / `last_value` / `identity` / `custom_case_config`。
+- 输出统一结构：`outputs + reference_strategy + reference_metadata + intermediate`。
+- 目标：让 oracle 更接近任务规格级 truth layer，而非 case-driven 临时基线。
+
+## 9. Lint Policy 与 Runtime 短路
+- `block`：lint error 直接短路，返回结构化 `runtime_skipped=true` 与 `skip_reason`。
+- `warn`：继续执行 runtime（默认，便于原型观察完整链路）。
+- `off`：完全关闭 lint gate。
+
+## 10. Auto Adapter 稳态回退
+- `auto` 模式需要同时满足：`environment.available=true` 且 `implemented=true` 才走 pyTSL。
+- 否则自动 fallback 到 mock，并记录 fallback reason。
+- `implemented` 当前默认为 false（`TODO(integration point)`），因此默认行为是稳定回退 mock。
+
+## 11. Local Evaluator 支持边界（明确声明）
+支持：
+- 赋值语句
+- `MA/REF/ABS/MAX/MIN`
+- `+ - * /`、比较、`and/or/not`
+
+不支持：
+- 控制流真实执行
+- 循环语义
+- 完整 TSL 语法
+
+## 12. Ask-Fix Payload 升级
+- 增加 validation mode / failure kind / reference strategy / runtime trace/final env / minimal repro。
+- 提供 `repair_prompt_preview`，作为未来直接投喂模型的修复提示草稿。
+

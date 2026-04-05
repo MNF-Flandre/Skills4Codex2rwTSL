@@ -62,7 +62,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         task_spec=task,
         adapter_name=args.adapter,
         mode=args.mode,
-        lint_gate=not args.no_lint_gate,
+        lint_policy=args.lint_policy,
         report_path=args.report,
     )
 
@@ -75,6 +75,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         "status": status,
         "failure_kind": failure_kind,
         "mode": args.mode,
+        "lint_policy": args.lint_policy,
         "exit_code": exit_code,
         "result": result.to_dict(),
     }
@@ -96,7 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--task", required=True, help="Path to task spec JSON")
     validate.add_argument("--adapter", default="auto", choices=["auto", "mock", "pytsl"])
     validate.add_argument("--mode", default="oracle", choices=["smoke", "spec", "oracle"])
-    validate.add_argument("--no-lint-gate", action="store_true", help="Do not fail validate on lint errors")
+    validate.add_argument("--lint-policy", default="warn", choices=["block", "warn", "off"])
     validate.add_argument(
         "--report",
         default="reports/sample_validation_report.md",

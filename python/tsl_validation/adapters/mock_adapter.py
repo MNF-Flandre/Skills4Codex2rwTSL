@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import copy
 import re
 from statistics import mean
 from typing import Any, Callable, Dict, List
@@ -92,6 +93,17 @@ class _EvalValue:
     def __eq__(self, other: Any) -> "_EvalValue":  # type: ignore[override]
         return self._binary(other, lambda a, b: a == b)
 
+    def __and__(self, other: Any) -> "_EvalValue":
+        return self._binary(other, lambda a, b: bool(a) and bool(b))
+
+    def __or__(self, other: Any) -> "_EvalValue":
+        return self._binary(other, lambda a, b: bool(a) or bool(b))
+
+    def __invert__(self) -> "_EvalValue":
+        if isinstance(self.value, list):
+            return _EvalValue([None if x is None else (not bool(x)) for x in self.value])
+        return _EvalValue(not bool(self.value))
+
     def __bool__(self) -> bool:
         v = self._scalar()
         return bool(v)
@@ -106,12 +118,15 @@ class _EvalValue:
 def _normalize_expr(expr: str) -> str:
     normalized = expr.replace("<>", "!=")
     normalized = re.sub(r"(?<![<>!=])=(?!=)", "==", normalized)
+    normalized = re.sub(r"\bAND\b", " and ", normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"\bOR\b", " or ", normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r"\bNOT\b", " not ", normalized, flags=re.IGNORECASE)
 
     def repl(match: re.Match[str]) -> str:
         token = match.group(0)
         upper = token.upper()
         lower = token.lower()
-        if upper in {"MA", "REF"}:
+        if upper in {"MA", "REF", "ABS", "MAX", "MIN"}:
             return upper
         if lower == "true":
             return "True"
@@ -146,6 +161,25 @@ def _ref(series_value: Any, k: Any) -> _EvalValue:
     return _EvalValue(out)
 
 
+def _abs(x: Any) -> _EvalValue:
+    xv = x if isinstance(x, _EvalValue) else _EvalValue(x)
+    if isinstance(xv.value, list):
+        return _EvalValue([None if v is None else abs(v) for v in xv.value])
+    if xv.value is None:
+        return _EvalValue(None)
+    return _EvalValue(abs(xv.value))
+
+
+def _max2(a: Any, b: Any) -> _EvalValue:
+    av = a if isinstance(a, _EvalValue) else _EvalValue(a)
+    return av._binary(b, lambda x, y: max(x, y))
+
+
+def _min2(a: Any, b: Any) -> _EvalValue:
+    av = a if isinstance(a, _EvalValue) else _EvalValue(a)
+    return av._binary(b, lambda x, y: min(x, y))
+
+
 def _safe_eval_expr(expr: str, env: Dict[str, Any]) -> _EvalValue:
     tree = ast.parse(expr, mode="eval")
 
@@ -167,7 +201,7 @@ def _safe_eval_expr(expr: str, env: Dict[str, Any]) -> _EvalValue:
             if not isinstance(node.func, ast.Name):
                 raise ValueError("unsupported call")
             fn_name = node.func.id
-            if fn_name not in {"MA", "REF"}:
+            if fn_name not in {"MA", "REF", "ABS", "MAX", "MIN"}:
                 raise NameError(f"unknown function: {fn_name}")
             fn = env[fn_name]
             args = [eval_node(arg) for arg in node.args]
@@ -190,6 +224,8 @@ def _safe_eval_expr(expr: str, env: Dict[str, Any]) -> _EvalValue:
                 return _EvalValue(0) - operand
             if isinstance(node.op, ast.UAdd):
                 return operand
+            if isinstance(node.op, ast.Not):
+                return ~operand
             raise ValueError("unsupported unary operator")
         if isinstance(node, ast.Compare):
             if len(node.ops) != 1 or len(node.comparators) != 1:
@@ -207,14 +243,33 @@ def _safe_eval_expr(expr: str, env: Dict[str, Any]) -> _EvalValue:
                 return left <= right
             if isinstance(op, ast.Eq):
                 return left == right
+            if isinstance(op, ast.NotEq):
+                return ~(left == right)
             raise ValueError("unsupported comparison operator")
+        if isinstance(node, ast.BoolOp):
+            values = [eval_node(v) for v in node.values]
+            if not values:
+                return _EvalValue(None)
+            acc = values[0]
+            for nxt in values[1:]:
+                if isinstance(node.op, ast.And):
+                    acc = acc & nxt
+                elif isinstance(node.op, ast.Or):
+                    acc = acc | nxt
+                else:
+                    raise ValueError("unsupported bool operator")
+            return acc
         raise ValueError(f"unsupported expression node: {type(node).__name__}")
 
     return eval_node(tree)
 
 
 class MockTSLAdapter(TSLRuntimeAdapter):
-    """Local evaluator adapter for small TSL subset validation."""
+    """Local evaluator adapter for a very small TSL subset.
+
+    Supported: assignment lines, MA/REF/ABS/MAX/MIN, arithmetic, comparisons, boolean ops.
+    Not supported: control flow semantics, loops, user-defined functions, full TSL grammar.
+    """
 
     name = "mock"
 
@@ -242,6 +297,7 @@ class MockTSLAdapter(TSLRuntimeAdapter):
 
         runtime_errors: List[str] = []
         assignments: List[str] = []
+        trace: List[Dict[str, Any]] = []
 
         for lineno, raw_line in enumerate(tsl_source.splitlines(), start=1):
             line = raw_line.split("//", 1)[0].strip()
@@ -264,16 +320,33 @@ class MockTSLAdapter(TSLRuntimeAdapter):
             expr = _normalize_expr(rhs.strip())
 
             eval_env: Dict[str, Any] = {k: v for k, v in env.items()}
-            eval_env.update({"MA": _ma, "REF": _ref})
+            eval_env.update({"MA": _ma, "REF": _ref, "ABS": _abs, "MAX": _max2, "MIN": _min2})
 
             try:
                 value = _safe_eval_expr(expr, eval_env)
+                env[name] = value if isinstance(value, _EvalValue) else _EvalValue(value)
+                assignments.append(name)
+                trace.append(
+                    {
+                        "line": lineno,
+                        "assignment": name,
+                        "expression": rhs.strip(),
+                        "normalized_expression": expr,
+                        "value": env[name].to_output(),
+                    }
+                )
             except Exception as exc:
                 runtime_errors.append(f"line {lineno}: {exc}")
+                trace.append(
+                    {
+                        "line": lineno,
+                        "assignment": name,
+                        "expression": rhs.strip(),
+                        "normalized_expression": expr,
+                        "error": str(exc),
+                    }
+                )
                 continue
-
-            env[name] = value if isinstance(value, _EvalValue) else _EvalValue(value)
-            assignments.append(name)
 
         outputs: Dict[str, Any] = {}
         for field in output_fields:
@@ -291,6 +364,12 @@ class MockTSLAdapter(TSLRuntimeAdapter):
         if "window" in case.parameters:
             outputs["window"] = case.parameters["window"]
 
+        final_env: Dict[str, Any] = {
+            k: v.to_output()
+            for k, v in env.items()
+            if k not in {"close", "open", "high", "low", "volume", "true", "false"}
+        }
+
         return {
             "adapter": self.name,
             "execution_mode": "local_evaluator",
@@ -299,6 +378,22 @@ class MockTSLAdapter(TSLRuntimeAdapter):
             "outputs": outputs,
             "intermediate": {
                 "parsed_assignments": assignments,
+                "trace": trace,
+                "final_env": final_env,
+                "support_scope": {
+                    "supported": [
+                        "assignment",
+                        "MA/REF/ABS/MAX/MIN",
+                        "arithmetic +-*/",
+                        "comparisons",
+                        "boolean and/or/not",
+                    ],
+                    "unsupported": [
+                        "control flow execution",
+                        "loops",
+                        "full tsl grammar",
+                    ],
+                },
                 "todo": "TODO(integration point): replace with real runtime traces when pyTSL is wired.",
             },
         }
