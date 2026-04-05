@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import re
 from statistics import mean
 from typing import Any, Callable, Dict, List
@@ -36,8 +37,8 @@ class _EvalValue:
             left = self._as_list()
             right = other_v._as_list()
             size = max(len(left), len(right))
-            left = left + [left[-1]] * (size - len(left)) if len(left) < size and left else left
-            right = right + [right[-1]] * (size - len(right)) if len(right) < size and right else right
+            left = self._pad_to_size(left, size)
+            right = self._pad_to_size(right, size)
             out: List[Any] = []
             for a, b in zip(left, right):
                 if a is None or b is None:
@@ -57,6 +58,12 @@ class _EvalValue:
             return _EvalValue(op(a, b))
         except Exception:
             return _EvalValue(None)
+
+    @staticmethod
+    def _pad_to_size(values: List[Any], size: int) -> List[Any]:
+        if not values or len(values) >= size:
+            return values
+        return values + [values[-1]] * (size - len(values))
 
     def __add__(self, other: Any) -> "_EvalValue":
         return self._binary(other, lambda a, b: a + b)
@@ -139,6 +146,73 @@ def _ref(series_value: Any, k: Any) -> _EvalValue:
     return _EvalValue(out)
 
 
+def _safe_eval_expr(expr: str, env: Dict[str, Any]) -> _EvalValue:
+    tree = ast.parse(expr, mode="eval")
+
+    def convert(v: Any) -> _EvalValue:
+        return v if isinstance(v, _EvalValue) else _EvalValue(v)
+
+    def eval_node(node: ast.AST) -> _EvalValue:
+        if isinstance(node, ast.Expression):
+            return eval_node(node.body)
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, (int, float, bool)):
+                return _EvalValue(node.value)
+            raise ValueError("unsupported constant")
+        if isinstance(node, ast.Name):
+            if node.id not in env:
+                raise NameError(f"unknown identifier: {node.id}")
+            return convert(env[node.id])
+        if isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Name):
+                raise ValueError("unsupported call")
+            fn_name = node.func.id
+            if fn_name not in {"MA", "REF"}:
+                raise NameError(f"unknown function: {fn_name}")
+            fn = env[fn_name]
+            args = [eval_node(arg) for arg in node.args]
+            return convert(fn(*args))
+        if isinstance(node, ast.BinOp):
+            left = eval_node(node.left)
+            right = eval_node(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if isinstance(node.op, ast.Div):
+                return left / right
+            raise ValueError("unsupported binary operator")
+        if isinstance(node, ast.UnaryOp):
+            operand = eval_node(node.operand)
+            if isinstance(node.op, ast.USub):
+                return _EvalValue(0) - operand
+            if isinstance(node.op, ast.UAdd):
+                return operand
+            raise ValueError("unsupported unary operator")
+        if isinstance(node, ast.Compare):
+            if len(node.ops) != 1 or len(node.comparators) != 1:
+                raise ValueError("chained comparisons unsupported")
+            left = eval_node(node.left)
+            right = eval_node(node.comparators[0])
+            op = node.ops[0]
+            if isinstance(op, ast.Gt):
+                return left > right
+            if isinstance(op, ast.GtE):
+                return left >= right
+            if isinstance(op, ast.Lt):
+                return left < right
+            if isinstance(op, ast.LtE):
+                return left <= right
+            if isinstance(op, ast.Eq):
+                return left == right
+            raise ValueError("unsupported comparison operator")
+        raise ValueError(f"unsupported expression node: {type(node).__name__}")
+
+    return eval_node(tree)
+
+
 class MockTSLAdapter(TSLRuntimeAdapter):
     """Local evaluator adapter for small TSL subset validation."""
 
@@ -193,7 +267,7 @@ class MockTSLAdapter(TSLRuntimeAdapter):
             eval_env.update({"MA": _ma, "REF": _ref})
 
             try:
-                value = eval(expr, {"__builtins__": {}}, eval_env)
+                value = _safe_eval_expr(expr, eval_env)
             except Exception as exc:
                 runtime_errors.append(f"line {lineno}: {exc}")
                 continue
