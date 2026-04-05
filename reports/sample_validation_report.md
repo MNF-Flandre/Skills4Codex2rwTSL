@@ -6,6 +6,8 @@
 - mode: `smoke`
 - lint_policy: `block`
 - adapter: `none`
+- runtime_stage: ``
+- adapter_resolution: `{"requested_adapter": "auto", "actual_adapter": "none", "fallback_used": false, "fallback_reason": ""}`
 
 ## Task Spec
 - task_id: `ma_signal_validation`

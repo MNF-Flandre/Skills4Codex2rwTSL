@@ -1,0 +1,185 @@
+{
+  "task_spec": {
+    "task_id": "ma_signal_validation",
+    "objective": "Validate TSL output against Python reference for moving-average-like logic",
+    "expected_behavior": "Core value fields should match tolerance in stable mappings",
+    "tolerance": 1e-06
+  },
+  "case": {
+    "case_id": "live_smoke_case",
+    "name": "Live pyTSL smoke template",
+    "input_series": [],
+    "parameters": {
+      "reference_strategy": "last_value",
+      "runtime_case": {
+        "symbol": "TODO_LOCAL_SYMBOL",
+        "period": "TODO_LOCAL_PERIOD",
+        "start_date": "TODO_LOCAL_START_DATE",
+        "end_date": "TODO_LOCAL_END_DATE",
+        "market": "TODO_LOCAL_MARKET",
+        "adjust_mode": "TODO_LOCAL_ADJUST_MODE",
+        "server": "",
+        "runtime": "",
+        "auth": "",
+        "extra_system_params": "",
+        "output_fields": [
+          "signal",
+          "value",
+          "series_tail",
+          "window"
+        ]
+      },
+      "output_fields": [
+        "signal",
+        "value",
+        "series_tail",
+        "window"
+      ],
+      "compare_fields": [
+        "signal",
+        "value"
+      ],
+      "required_fields": [
+        "signal",
+        "value"
+      ],
+      "field_types": {
+        "signal": "number",
+        "value": "number",
+        "series_tail": "array"
+      }
+    }
+  },
+  "diagnostics": [],
+  "python_reference": {
+    "outputs": {
+      "signal": 0.0,
+      "value": 0.0,
+      "series_tail": [],
+      "window": 0
+    },
+    "reference_strategy": "last_value",
+    "reference_metadata": {
+      "note": "empty input series",
+      "config": {}
+    },
+    "intermediate": {}
+  },
+  "tsl_output": {},
+  "metadata": {
+    "adapter": "pytsl",
+    "adapter_resolution": {
+      "requested_adapter": "pytsl",
+      "actual_adapter": "pytsl",
+      "fallback_used": false,
+      "fallback_reason": ""
+    },
+    "execution_mode": "pytsl",
+    "validation_mode": "smoke",
+    "status": "fail",
+    "failure_kind": "config_failure",
+    "lint_policy": "warn",
+    "lint_error_count": 0,
+    "runtime_status": "failed",
+    "runtime_stage": "preflight",
+    "runtime_errors": [
+      "pyTSL preflight failed before execute.",
+      "runtime_package_missing",
+      "runtime_config_missing:server,runtime,auth",
+      "execute_path_not_implemented"
+    ],
+    "runtime_skipped": false,
+    "skip_reason": "",
+    "spec_issues": [
+      "missing field: signal",
+      "missing field: value"
+    ],
+    "mismatch_count": 0,
+    "reference_strategy": "last_value",
+    "reference_metadata": {
+      "note": "empty input series",
+      "config": {}
+    },
+    "runtime_payload": {
+      "adapter": "pytsl",
+      "execution_mode": "pytsl",
+      "runtime_status": "failed",
+      "runtime_errors": [
+        "pyTSL preflight failed before execute.",
+        "runtime_package_missing",
+        "runtime_config_missing:server,runtime,auth",
+        "execute_path_not_implemented"
+      ],
+      "outputs": {},
+      "integration": {
+        "stage": "preflight",
+        "preflight": {
+          "package_ready": false,
+          "config_ready": false,
+          "case_ready": true,
+          "implemented": false,
+          "overall_ready": false,
+          "problems": [
+            "runtime_package_missing",
+            "runtime_config_missing:server,runtime,auth",
+            "execute_path_not_implemented"
+          ],
+          "package": {
+            "ok": false,
+            "module_name": "",
+            "tried": [
+              "pytsl",
+              "tslpy"
+            ],
+            "error": "runtime package not found"
+          },
+          "runtime_config": {
+            "server": null,
+            "runtime": null,
+            "auth": null,
+            "symbol": "TODO_LOCAL_SYMBOL",
+            "period": "TODO_LOCAL_PERIOD",
+            "start_date": "TODO_LOCAL_START_DATE",
+            "end_date": "TODO_LOCAL_END_DATE",
+            "market": "TODO_LOCAL_MARKET",
+            "adjust_mode": "TODO_LOCAL_ADJUST_MODE",
+            "extra_system_params": null,
+            "output_fields": [
+              "signal",
+              "value",
+              "series_tail",
+              "window"
+            ],
+            "compare_fields": [
+              "signal",
+              "value"
+            ],
+            "required_fields": [
+              "signal",
+              "value"
+            ],
+            "field_types": {
+              "signal": "number",
+              "value": "number",
+              "series_tail": "array"
+            }
+          },
+          "case_requirements": {
+            "is_live_case": true,
+            "missing_live_fields": []
+          },
+          "todo": "TODO(integration point): wire exact SDK capability checks for implementation readiness."
+        },
+        "todo": "TODO(integration point): satisfy preflight and execute with real pyTSL SDK contract."
+      },
+      "runtime_skipped": false,
+      "skip_reason": ""
+    },
+    "todo": "TODO(integration point): replace mock/local evaluator with pyTSL execution in production."
+  },
+  "diff_report": {
+    "case_id": "live_smoke_case",
+    "summary": "diff skipped in smoke mode",
+    "items": []
+  }
+}

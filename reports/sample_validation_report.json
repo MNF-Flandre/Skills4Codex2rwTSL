@@ -113,6 +113,7 @@
     "lint_policy": "block",
     "lint_error_count": 2,
     "runtime_status": "skipped",
+    "runtime_stage": "",
     "runtime_errors": [],
     "runtime_skipped": true,
     "skip_reason": "lint_policy_blocked_by_error",

@@ -69,6 +69,14 @@ class TestValidationRunner(unittest.TestCase):
         self.assertGreaterEqual(len(trace), 3)
         self.assertIn("value", final_env)
 
+    def test_live_case_schema_is_compatible(self):
+        source = (ROOT / "examples/golden_cases/mock_pass_case.tsl").read_text(encoding="utf-8")
+        case = ValidationCase(**load_json(ROOT / "examples/live_cases/live_smoke_case.json"))
+        task = TaskSpec(**load_json(ROOT / "examples/golden_cases/task_spec.json"))
+        result = run_validation(source, case, task, adapter_name="pytsl", mode="smoke", lint_policy="warn")
+        self.assertIn(result.metadata.get("failure_kind"), {"preflight_failure", "config_failure", "runtime_failure"})
+        self.assertIn("runtime_stage", result.metadata)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -284,7 +284,16 @@ def run_validation(
     elif runtime_skipped:
         failure_kind = "runtime_skipped"
     elif not runtime_ok:
-        failure_kind = "runtime_failure"
+        integration = runtime_payload.get("integration", {})
+        runtime_stage = integration.get("stage", "")
+        if runtime_stage == "preflight":
+            problems = integration.get("preflight", {}).get("problems", [])
+            if any(str(p).startswith("runtime_config_missing") for p in problems):
+                failure_kind = "config_failure"
+            else:
+                failure_kind = "preflight_failure"
+        else:
+            failure_kind = "runtime_failure"
     elif mode in {"spec", "oracle"} and spec_issues:
         failure_kind = "spec_failure"
     elif mode == "oracle" and mismatch_count > 0:
@@ -308,6 +317,7 @@ def run_validation(
             "lint_policy": lint_policy,
             "lint_error_count": lint_errors,
             "runtime_status": runtime_status,
+            "runtime_stage": runtime_payload.get("integration", {}).get("stage", ""),
             "runtime_errors": runtime_errors,
             "runtime_skipped": runtime_skipped,
             "skip_reason": skip_reason,

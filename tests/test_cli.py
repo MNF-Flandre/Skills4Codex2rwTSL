@@ -73,6 +73,16 @@ class TestCliExitCodes(unittest.TestCase):
         self.assertEqual(code, 3)
         self.assertEqual(payload.get("status"), "error")
 
+    def test_preflight_command_outputs_structure(self):
+        code, payload = run_cli([
+            "preflight",
+            "--case",
+            "examples/live_cases/live_smoke_case.json",
+        ])
+        self.assertIn(code, [0, 1])
+        self.assertEqual(payload.get("command"), "preflight")
+        self.assertIn("preflight", payload)
+
 
 if __name__ == "__main__":
     unittest.main()

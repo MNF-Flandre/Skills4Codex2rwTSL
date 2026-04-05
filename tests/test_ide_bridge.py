@@ -97,6 +97,15 @@ class TestIdeBridge(unittest.TestCase):
             self.assertIn(key, rp)
         self.assertTrue(rp["repair_prompt_preview"])
 
+    def test_run_preflight_command(self):
+        payload = _run([
+            "run-preflight",
+            "--case",
+            str(ROOT / "examples" / "live_cases" / "live_smoke_case.json"),
+        ])
+        self.assertEqual(payload["command"], "Run PyTSL Preflight")
+        self.assertIn("preflight", payload)
+
 
 if __name__ == "__main__":
     unittest.main()

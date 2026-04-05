@@ -111,3 +111,48 @@
 - 增加 validation mode / failure kind / reference strategy / runtime trace/final env / minimal repro。
 - 提供 `repair_prompt_preview`，作为未来直接投喂模型的修复提示草稿。
 
+
+
+## 13. Live pyTSL 集成准备度（本轮）
+
+### 13.1 新增能力
+- live runtime case schema（`parameters.runtime_case`）
+- `PyTSLAdapter.preflight()`（包/配置/case/实现状态分层检查）
+- execute staged skeleton：
+  - `_load_runtime_package()`
+  - `_build_runtime_config()`
+  - `_connect()`
+  - `_execute_tsl()`
+  - `_normalize_outputs()`
+  - `_disconnect()`
+- CLI 新增 `preflight` 命令
+- IDE bridge 新增 `run-preflight`
+
+### 13.2 失败分层
+runner/report 现在可区分：
+- `preflight_failure`
+- `config_failure`
+- `runtime_failure`
+- `oracle_mismatch`
+
+并保留 adapter resolution：
+- `requested_adapter`
+- `actual_adapter`
+- `fallback_used`
+- `fallback_reason`
+
+### 13.3 Live case 模板
+目录：`examples/live_cases/`
+- `live_smoke_case.json`
+- `live_oracle_case.json`
+
+用途：本地填账号后直接试跑首枪（先 preflight，再 smoke，再 oracle）。
+
+### 13.4 Live integration tests（opt-in）
+新增：`tests/test_live_pytsl_integration.py`
+- 默认跳过（`RUN_PYTSL_LIVE != 1`）
+- 覆盖 preflight shell + live smoke execute shell
+
+### 13.5 仍是 TODO(integration point)
+- 真实 pyTSL SDK 的精确 connect/execute 调用签名仍需本地按 SDK 文档收敛。
+- 当前实现故意不硬猜 SDK 专有 API，所有不确定点均显式标注 `TODO(integration point)`。

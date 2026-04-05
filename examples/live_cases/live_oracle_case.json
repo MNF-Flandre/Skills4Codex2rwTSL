@@ -1,0 +1,33 @@
+{
+  "case_id": "live_oracle_case",
+  "name": "Live pyTSL oracle template",
+  "input_series": [],
+  "parameters": {
+    "reference_strategy": "moving_average_signal",
+    "window": 3,
+    "python_reference": {
+      "reference_strategy": "moving_average_signal",
+      "window": 3
+    },
+    "runtime_case": {
+      "symbol": "TODO_LOCAL_SYMBOL",
+      "period": "TODO_LOCAL_PERIOD",
+      "start_date": "TODO_LOCAL_START_DATE",
+      "end_date": "TODO_LOCAL_END_DATE",
+      "market": "TODO_LOCAL_MARKET",
+      "adjust_mode": "TODO_LOCAL_ADJUST_MODE",
+      "server": "",
+      "runtime": "",
+      "auth": "",
+      "extra_system_params": "",
+      "output_fields": ["signal", "value", "series_tail", "window"]
+    },
+    "output_fields": ["signal", "value", "series_tail", "window"],
+    "compare_fields": ["signal", "value"],
+    "required_fields": ["signal", "value"],
+    "field_types": {
+      "signal": "number",
+      "value": "number"
+    }
+  }
+}

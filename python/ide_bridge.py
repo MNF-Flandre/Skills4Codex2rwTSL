@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+from tsl_validation.adapters.pytsl_adapter import PyTSLAdapter
 from tsl_validation.cli import _load_case, _load_task
 from tsl_validation.linting import TslLinter
 from tsl_validation.runner import run_validation
@@ -51,6 +52,20 @@ def run_validation_command(
         "failure_kind": result.metadata.get("failure_kind"),
         "summary": result.diff_report.summary,
         "adapter": result.metadata.get("adapter"),
+        "adapter_resolution": result.metadata.get("adapter_resolution"),
+        "runtime_stage": result.metadata.get("runtime_stage"),
+    }
+
+
+def run_preflight_command(case_file: str) -> dict:
+    case = _load_case(case_file)
+    adapter = PyTSLAdapter()
+    preflight = adapter.preflight(case)
+    return {
+        "command": "Run PyTSL Preflight",
+        "adapter": "pytsl",
+        "status": "pass" if preflight.get("overall_ready") else "fail",
+        "preflight": preflight,
     }
 
 
@@ -113,6 +128,8 @@ def ask_ai_to_fix(tsl_file: str, report_file: str) -> dict:
         "mismatch_fields": mismatch_fields,
         "reference_strategy": metadata.get("reference_strategy"),
         "runtime_adapter": metadata.get("adapter"),
+        "adapter_resolution": metadata.get("adapter_resolution", {}),
+        "runtime_stage": metadata.get("runtime_stage", ""),
         "runtime_errors": metadata.get("runtime_errors", []),
         "runtime_intermediate_trace": runtime_payload.get("intermediate", {}).get("trace", []),
         "runtime_final_env": runtime_payload.get("intermediate", {}).get("final_env", {}),
@@ -149,6 +166,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("--lint-policy", default="warn", choices=["block", "warn", "off"])
     p_validate.add_argument("--report", default="reports/sample_validation_report.md")
 
+    p_preflight = sub.add_parser("run-preflight")
+    p_preflight.add_argument("--case", required=True)
+
     p_diff = sub.add_parser("show-diff")
     p_diff.add_argument("--report", required=True)
 
@@ -177,6 +197,8 @@ def main() -> int:
         )
     elif args.command == "show-diff":
         payload = show_diff_report(args.report)
+    elif args.command == "run-preflight":
+        payload = run_preflight_command(args.case)
     else:
         payload = ask_ai_to_fix(args.file, args.report)
 

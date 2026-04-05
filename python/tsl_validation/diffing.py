@@ -126,6 +126,8 @@ def render_markdown_report(
         f"- mode: `{metadata.get('validation_mode', '')}`",
         f"- lint_policy: `{metadata.get('lint_policy', '')}`",
         f"- adapter: `{metadata.get('adapter', '')}`",
+        f"- runtime_stage: `{metadata.get('runtime_stage', '')}`",
+        f"- adapter_resolution: `{json.dumps(metadata.get('adapter_resolution', {}), ensure_ascii=False)}`",
         "",
         "## Task Spec",
         f"- task_id: `{task_spec.task_id}`",

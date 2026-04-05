@@ -28,7 +28,7 @@ class TaskSpec:
 class ValidationCase:
     case_id: str
     name: str
-    input_series: List[float]
+    input_series: List[float] = field(default_factory=list)
     parameters: Dict[str, Any] = field(default_factory=dict)
 
 

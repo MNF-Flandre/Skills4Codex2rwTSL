@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from tsl_validation.adapters.pytsl_adapter import PyTSLAdapter
 from tsl_validation.linting import TslLinter
 from tsl_validation.runner import run_validation
 from tsl_validation.schemas import TaskSpec, ValidationCase
@@ -44,6 +45,20 @@ def cmd_lint(args: argparse.Namespace) -> int:
     return EXIT_VALIDATION_ERROR if payload["status"] == "fail" else EXIT_OK
 
 
+def cmd_preflight(args: argparse.Namespace) -> int:
+    case = _load_case(args.case)
+    adapter = PyTSLAdapter()
+    preflight = adapter.preflight(case)
+    payload = {
+        "command": "preflight",
+        "adapter": "pytsl",
+        "status": "pass" if preflight.get("overall_ready") else "fail",
+        "preflight": preflight,
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return EXIT_OK if payload["status"] == "pass" else EXIT_VALIDATION_ERROR
+
+
 def _code_for_result(status: str, failure_kind: str) -> int:
     if status == "pass":
         return EXIT_OK
@@ -77,6 +92,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
         "mode": args.mode,
         "lint_policy": args.lint_policy,
         "exit_code": exit_code,
+        "adapter_resolution": result.metadata.get("adapter_resolution", {}),
+        "runtime_stage": result.metadata.get("runtime_stage", ""),
         "result": result.to_dict(),
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -90,6 +107,10 @@ def build_parser() -> argparse.ArgumentParser:
     lint = sub.add_parser("lint", help="Run lightweight TSL lint checks")
     lint.add_argument("file", help="Path to .tsl source")
     lint.set_defaults(func=cmd_lint)
+
+    preflight = sub.add_parser("preflight", help="Run pyTSL preflight checks for live runtime readiness")
+    preflight.add_argument("--case", required=True, help="Path to validation case JSON")
+    preflight.set_defaults(func=cmd_preflight)
 
     validate = sub.add_parser("validate", help="Run validation with adapter + diff report")
     validate.add_argument("file", help="Path to .tsl source")

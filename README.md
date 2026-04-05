@@ -221,3 +221,96 @@ mock/local evaluator 除 outputs 外还返回：
 - minimal repro case
 - `repair_prompt_preview`（可直接用于 Copilot/Codex 输入）
 
+
+
+### Live pyTSL 本地试跑准备（preflight -> smoke -> oracle）
+
+当前 pyTSL 集成已补齐“真实执行骨架 + preflight + 输出归一化 + live case 模板”，可用于本地带账号试跑准备。
+
+#### 1) 本地配置
+
+复制模板并填写：
+
+```bash
+cp .env.example .env.local
+# 然后导出到当前 shell（示例）
+set -a && source .env.local && set +a
+```
+
+必须字段（至少）：
+- `PYTSL_SERVER`
+- `PYTSL_RUNTIME`
+- `PYTSL_AUTH_TOKEN`
+
+常用字段：
+- `PYTSL_SYMBOL`
+- `PYTSL_PERIOD`
+- `PYTSL_START_DATE`
+- `PYTSL_END_DATE`
+- `PYTSL_MARKET`
+- `PYTSL_ADJUST_MODE`
+- `PYTSL_EXTRA_SYSTEM_PARAMS`
+
+> 不要提交真实凭证；`.env*` 已在 `.gitignore` 屏蔽（保留 `.env.example`）。
+
+#### 2) live case schema
+
+新增 live 模板在 `examples/live_cases/`：
+- `live_smoke_case.json`
+- `live_oracle_case.json`
+
+live 关键字段放在：
+- `parameters.runtime_case`
+
+包括：
+- `symbol/period/start_date/end_date`
+- `market/adjust_mode`
+- `server/runtime/auth`（可留空走环境变量）
+- `extra_system_params`
+- `output_fields`
+
+旧 mock case 仍兼容（`input_series` + 既有 parameters）。
+
+#### 3) preflight
+
+先跑 preflight，再跑 validate：
+
+```bash
+PYTHONPATH=python python -m tsl_validation.cli preflight   --case examples/live_cases/live_smoke_case.json
+```
+
+preflight 结构化输出包含：
+- `package_ready`
+- `config_ready`
+- `case_ready`
+- `implemented`
+- `overall_ready`
+- `problems`
+
+#### 4) live smoke
+
+```bash
+PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/mock_pass_case.tsl   --case examples/live_cases/live_smoke_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode smoke   --lint-policy warn   --report reports/live_smoke_report.md
+```
+
+#### 5) live oracle
+
+```bash
+PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/mock_pass_case.tsl   --case examples/live_cases/live_oracle_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode oracle   --lint-policy warn   --report reports/live_oracle_report.md
+```
+
+#### 6) adapter 选择语义
+
+- `--adapter pytsl`：显式走 pyTSL，不会偷偷回退 mock（失败会直接暴露在 preflight/connect/execute/normalize 阶段）。
+- `--adapter auto`：允许回退 mock，但会记录 `requested/actual/fallback/reason`。
+
+#### 7) 仍是 TODO(integration point)
+
+已完成：
+- 执行分层骨架（load/build/preflight/connect/execute/normalize/disconnect）
+- 结构化阶段错误
+- 归一化输出层
+
+仍需本地补充：
+- 真实 pyTSL SDK 精确 connect/execute 签名与返回结构映射（文件内已显式 `TODO(integration point)`）
+
