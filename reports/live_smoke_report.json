@@ -12,16 +12,24 @@
     "parameters": {
       "reference_strategy": "last_value",
       "runtime_case": {
+        "connection_mode": "local_client_bridge",
+        "network_required": false,
+        "host": "TODO_TSL_HOST",
+        "port": 443,
+        "username": "",
+        "password": "",
         "symbol": "TODO_LOCAL_SYMBOL",
         "period": "TODO_LOCAL_PERIOD",
-        "start_date": "TODO_LOCAL_START_DATE",
-        "end_date": "TODO_LOCAL_END_DATE",
-        "market": "TODO_LOCAL_MARKET",
-        "adjust_mode": "TODO_LOCAL_ADJUST_MODE",
+        "start_date": "2023-10-01",
+        "end_date": "2023-10-25",
+        "market": "SH",
+        "adjust_mode": "unadjusted",
         "server": "",
         "runtime": "",
         "auth": "",
         "extra_system_params": "",
+        "connection_label": "local_client_bridge",
+        "note": "fill username/password via env or .env.local; keep real credentials out of git",
         "output_fields": [
           "signal",
           "value",
@@ -50,7 +58,58 @@
       }
     }
   },
-  "diagnostics": [],
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "TSL010",
+      "message": "Variable 'return' may be used before assignment.",
+      "range": [
+        2,
+        1
+      ],
+      "suggestion": "Initialize the variable before use or check spelling."
+    },
+    {
+      "severity": "warning",
+      "code": "TSL010",
+      "message": "Variable 'signal' may be used before assignment.",
+      "range": [
+        2,
+        15
+      ],
+      "suggestion": "Initialize the variable before use or check spelling."
+    },
+    {
+      "severity": "warning",
+      "code": "TSL010",
+      "message": "Variable 'value' may be used before assignment.",
+      "range": [
+        2,
+        28
+      ],
+      "suggestion": "Initialize the variable before use or check spelling."
+    },
+    {
+      "severity": "warning",
+      "code": "TSL010",
+      "message": "Variable 'series_tail' may be used before assignment.",
+      "range": [
+        2,
+        40
+      ],
+      "suggestion": "Initialize the variable before use or check spelling."
+    },
+    {
+      "severity": "warning",
+      "code": "TSL010",
+      "message": "Variable 'window' may be used before assignment.",
+      "range": [
+        2,
+        69
+      ],
+      "suggestion": "Initialize the variable before use or check spelling."
+    }
+  ],
   "python_reference": {
     "outputs": {
       "signal": 0.0,
@@ -65,9 +124,20 @@
     },
     "intermediate": {}
   },
-  "tsl_output": {},
+  "tsl_output": {
+    "signal": 1,
+    "value": 1,
+    "series_tail": [
+      1,
+      2,
+      3
+    ],
+    "window": 3
+  },
   "metadata": {
     "adapter": "pytsl",
+    "requested_adapter": "pytsl",
+    "actual_adapter": "pytsl",
     "adapter_resolution": {
       "requested_adapter": "pytsl",
       "actual_adapter": "pytsl",
@@ -76,24 +146,17 @@
     },
     "execution_mode": "pytsl",
     "validation_mode": "smoke",
-    "status": "fail",
-    "failure_kind": "config_failure",
+    "status": "pass",
+    "failure_kind": "",
     "lint_policy": "warn",
     "lint_error_count": 0,
-    "runtime_status": "failed",
-    "runtime_stage": "preflight",
-    "runtime_errors": [
-      "pyTSL preflight failed before execute.",
-      "runtime_package_missing",
-      "runtime_config_missing:server,runtime,auth",
-      "execute_path_not_implemented"
-    ],
+    "runtime_status": "ok",
+    "runtime_stage": "completed",
+    "connection_mode": "local_client_bridge",
+    "runtime_errors": [],
     "runtime_skipped": false,
     "skip_reason": "",
-    "spec_issues": [
-      "missing field: signal",
-      "missing field: value"
-    ],
+    "spec_issues": [],
     "mismatch_count": 0,
     "reference_strategy": "last_value",
     "reference_metadata": {
@@ -103,47 +166,238 @@
     "runtime_payload": {
       "adapter": "pytsl",
       "execution_mode": "pytsl",
-      "runtime_status": "failed",
-      "runtime_errors": [
-        "pyTSL preflight failed before execute.",
-        "runtime_package_missing",
-        "runtime_config_missing:server,runtime,auth",
-        "execute_path_not_implemented"
-      ],
-      "outputs": {},
+      "runtime_status": "ok",
+      "failure_kind": "",
+      "runtime_errors": [],
+      "outputs": {
+        "signal": 1,
+        "value": 1,
+        "series_tail": [
+          1,
+          2,
+          3
+        ],
+        "window": 3
+      },
       "integration": {
-        "stage": "preflight",
+        "stage": "completed",
+        "connection_mode": "local_client_bridge",
         "preflight": {
-          "package_ready": false,
-          "config_ready": false,
+          "package_ready": true,
+          "config_ready": true,
           "case_ready": true,
-          "implemented": false,
-          "overall_ready": false,
-          "problems": [
-            "runtime_package_missing",
-            "runtime_config_missing:server,runtime,auth",
-            "execute_path_not_implemented"
-          ],
+          "network_ready": true,
+          "sdk_ready": true,
+          "connection_mode": "local_client_bridge",
+          "connection_mode_info": {
+            "connection_mode": "local_client_bridge",
+            "source": "explicit",
+            "reason": "connection_mode supplied by case/env"
+          },
+          "overall_ready": true,
+          "problems": [],
           "package": {
-            "ok": false,
-            "module_name": "",
+            "ok": true,
+            "module_name": "TSLPy312",
             "tried": [
+              "TSLPy314",
+              "TSLPy313",
+              "TSLPy312",
+              "TSLPy311",
+              "TSLPy310",
+              "TSLPy39",
+              "TSLPy38",
+              "TSLPy37",
+              "TSLPy36",
+              "TSLPy35",
+              "TSLPy34",
+              "TSLPy3",
+              "TSLPy2",
               "pytsl",
               "tslpy"
             ],
-            "error": "runtime package not found"
+            "probe": {
+              "candidates": [
+                {
+                  "name": "TSLPy314",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy314.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy314: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy313",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy313.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy313: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy312",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy312.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": true,
+                  "module_file": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy312.pyd",
+                  "entrypoints": {
+                    "connect": [
+                      "ConnectServer",
+                      "LoginServer",
+                      "DefaultConnectAndLogin",
+                      "Disconnect",
+                      "SetService",
+                      "SetComputeBitsOption",
+                      "GetService",
+                      "Logined",
+                      "LoginedUser",
+                      "RemoteAddress",
+                      "RemotePort"
+                    ],
+                    "execute": [
+                      "RemoteExecute",
+                      "RemoteCallFunc",
+                      "LocalExecute",
+                      "LocalCallFunc"
+                    ],
+                    "remote_execute": [
+                      "RemoteExecute",
+                      "RemoteCallFunc"
+                    ],
+                    "local_execute": [
+                      "LocalExecute",
+                      "LocalCallFunc"
+                    ],
+                    "sdk_ready": true
+                  }
+                },
+                {
+                  "name": "TSLPy311",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy311.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy311: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy310",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy310.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy310: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy39",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy39.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy39: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy38",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy38.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy38: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy37",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy37.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy37: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy36",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy36.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy36: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy35",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy35.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy35: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy34",
+                  "found": true,
+                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy34.pyd",
+                  "loader": "ExtensionFileLoader",
+                  "import_ok": false,
+                  "import_error": "ImportError: DLL load failed while importing TSLPy34: 找不到指定的模块。"
+                },
+                {
+                  "name": "TSLPy3",
+                  "found": false,
+                  "origin": "",
+                  "loader": "",
+                  "import_ok": false,
+                  "import_error": "module not found"
+                },
+                {
+                  "name": "TSLPy2",
+                  "found": false,
+                  "origin": "",
+                  "loader": "",
+                  "import_ok": false,
+                  "import_error": "module not found"
+                },
+                {
+                  "name": "pytsl",
+                  "found": false,
+                  "origin": "",
+                  "loader": "",
+                  "import_ok": false,
+                  "import_error": "module not found"
+                },
+                {
+                  "name": "tslpy",
+                  "found": false,
+                  "origin": "",
+                  "loader": "",
+                  "import_ok": false,
+                  "import_error": "module not found"
+                }
+              ],
+              "importable_modules": [
+                "TSLPy312"
+              ],
+              "candidate_paths": [
+                "LOCAL_WORKSPACE\\AnalyseNG.NET",
+                "LOCAL_WORKSPACE\\external\\Skills4Codex2rwTSL",
+                "LOCAL_WORKSPACE\\external\\Skills4Codex2rwTSL\\python"
+              ]
+            },
+            "error": ""
           },
           "runtime_config": {
+            "host": "TODO_TSL_HOST",
+            "port": 443,
+            "username": "",
+            "password": "",
+            "connection_mode": "local_client_bridge",
+            "network_required": false,
             "server": null,
             "runtime": null,
             "auth": null,
+            "connection_label": "local_client_bridge",
             "symbol": "TODO_LOCAL_SYMBOL",
             "period": "TODO_LOCAL_PERIOD",
-            "start_date": "TODO_LOCAL_START_DATE",
-            "end_date": "TODO_LOCAL_END_DATE",
-            "market": "TODO_LOCAL_MARKET",
-            "adjust_mode": "TODO_LOCAL_ADJUST_MODE",
-            "extra_system_params": null,
+            "start_date": "2023-10-01",
+            "end_date": "2023-10-25",
+            "market": "SH",
+            "adjust_mode": "unadjusted",
+            "extra_system_params": {},
             "output_fields": [
               "signal",
               "value",
@@ -168,9 +422,174 @@
             "is_live_case": true,
             "missing_live_fields": []
           },
+          "network_probe": {
+            "host": "TODO_TSL_HOST",
+            "port": 443,
+            "tcp_port_open": true,
+            "network_reachable": true,
+            "tls_ready": true,
+            "latency_ms": null,
+            "error": "",
+            "note": "network check skipped by configuration"
+          },
+          "sdk_probe": {
+            "package_ready": true,
+            "module_name": "TSLPy312",
+            "entrypoints": {
+              "connect": [
+                "ConnectServer",
+                "LoginServer",
+                "DefaultConnectAndLogin",
+                "Disconnect",
+                "SetService",
+                "SetComputeBitsOption",
+                "GetService",
+                "Logined",
+                "LoginedUser",
+                "RemoteAddress",
+                "RemotePort"
+              ],
+              "execute": [
+                "RemoteExecute",
+                "RemoteCallFunc",
+                "LocalExecute",
+                "LocalCallFunc"
+              ],
+              "remote_execute": [
+                "RemoteExecute",
+                "RemoteCallFunc"
+              ],
+              "local_execute": [
+                "LocalExecute",
+                "LocalCallFunc"
+              ],
+              "sdk_ready": true
+            },
+            "connect_entrypoints": [
+              "ConnectServer",
+              "LoginServer",
+              "DefaultConnectAndLogin",
+              "Disconnect",
+              "SetService",
+              "SetComputeBitsOption",
+              "GetService",
+              "Logined",
+              "LoginedUser",
+              "RemoteAddress",
+              "RemotePort"
+            ],
+            "execute_entrypoints": [
+              "RemoteExecute",
+              "RemoteCallFunc",
+              "LocalExecute",
+              "LocalCallFunc"
+            ],
+            "sdk_ready": true
+          },
           "todo": "TODO(integration point): wire exact SDK capability checks for implementation readiness."
         },
-        "todo": "TODO(integration point): satisfy preflight and execute with real pyTSL SDK contract."
+        "connect": {
+          "ok": true,
+          "stage": "connect",
+          "mode": "local_client_bridge",
+          "error": "",
+          "connect_attempt": {
+            "alias": "local_client_bridge",
+            "bridge_state": "local_execute_only",
+            "mode": "local_client_bridge",
+            "default_connect_result": [
+              -1,
+              "Alias error"
+            ],
+            "default_connect_info": {
+              "ok": true,
+              "stage": "DefaultConnectAndLogin",
+              "error": "",
+              "entrypoint": "DefaultConnectAndLogin"
+            }
+          },
+          "todo": "TODO(integration point): local bridge may execute without a new login when the client runtime is already available."
+        },
+        "execute": {
+          "ok": true,
+          "stage": "execute",
+          "error": "",
+          "mode": "local_client_bridge",
+          "entrypoint": "LocalExecute",
+          "raw_result": [
+            0,
+            [
+              "signal",
+              1,
+              "value",
+              1,
+              "series_tail",
+              [
+                1,
+                2,
+                3
+              ],
+              "window",
+              3
+            ],
+            "",
+            0
+          ]
+        },
+        "normalize": {
+          "ok": true,
+          "errors": [],
+          "raw_summary": {
+            "raw_type": "list",
+            "raw_keys": [
+              "series_tail",
+              "signal",
+              "value",
+              "window"
+            ],
+            "mapped_fields": {
+              "signal": "scalar",
+              "value": "scalar",
+              "series_tail": "tail",
+              "window": "scalar"
+            },
+            "normalization_errors": []
+          }
+        }
+      },
+      "intermediate": {
+        "runtime_case": {
+          "connection_mode": "local_client_bridge",
+          "network_required": false,
+          "host": "TODO_TSL_HOST",
+          "port": 443,
+          "username": "",
+          "password": "",
+          "symbol": "TODO_LOCAL_SYMBOL",
+          "period": "TODO_LOCAL_PERIOD",
+          "start_date": "2023-10-01",
+          "end_date": "2023-10-25",
+          "market": "SH",
+          "adjust_mode": "unadjusted",
+          "server": "",
+          "runtime": "",
+          "auth": "",
+          "extra_system_params": "",
+          "connection_label": "local_client_bridge",
+          "note": "fill username/password via env or .env.local; keep real credentials out of git",
+          "output_fields": [
+            "signal",
+            "value",
+            "series_tail",
+            "window"
+          ]
+        },
+        "runtime_config_summary": {
+          "symbol": "TODO_LOCAL_SYMBOL",
+          "period": "TODO_LOCAL_PERIOD",
+          "start_date": "2023-10-01",
+          "end_date": "2023-10-25"
+        }
       },
       "runtime_skipped": false,
       "skip_reason": ""

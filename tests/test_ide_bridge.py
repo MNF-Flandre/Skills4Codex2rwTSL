@@ -11,9 +11,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _run(args):
     cmd = [sys.executable, str(ROOT / "python" / "ide_bridge.py")] + args
-    env = {"PYTHONPATH": str(ROOT / "python")}
-    out = subprocess.check_output(cmd, cwd=ROOT, env=env)
-    return json.loads(out.decode("utf-8"))
+    env = {
+        "PYTHONPATH": str(ROOT / "python"),
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+    }
+    out = subprocess.check_output(cmd, cwd=ROOT, env=env, encoding="utf-8", errors="replace")
+    return json.loads(out)
 
 
 class TestIdeBridge(unittest.TestCase):
@@ -105,6 +109,8 @@ class TestIdeBridge(unittest.TestCase):
         ])
         self.assertEqual(payload["command"], "Run PyTSL Preflight")
         self.assertIn("preflight", payload)
+        for key in ["connection_mode", "package_ready", "config_ready", "case_ready", "network_ready", "sdk_ready", "overall_ready"]:
+            self.assertIn(key, payload)
 
 
 if __name__ == "__main__":

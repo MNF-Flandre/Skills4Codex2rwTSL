@@ -52,6 +52,9 @@ def run_validation_command(
         "failure_kind": result.metadata.get("failure_kind"),
         "summary": result.diff_report.summary,
         "adapter": result.metadata.get("adapter"),
+        "requested_adapter": result.metadata.get("requested_adapter"),
+        "actual_adapter": result.metadata.get("actual_adapter"),
+        "connection_mode": result.metadata.get("connection_mode"),
         "adapter_resolution": result.metadata.get("adapter_resolution"),
         "runtime_stage": result.metadata.get("runtime_stage"),
     }
@@ -64,6 +67,13 @@ def run_preflight_command(case_file: str) -> dict:
     return {
         "command": "Run PyTSL Preflight",
         "adapter": "pytsl",
+        "connection_mode": preflight.get("connection_mode", ""),
+        "package_ready": preflight.get("package_ready", False),
+        "config_ready": preflight.get("config_ready", False),
+        "case_ready": preflight.get("case_ready", False),
+        "network_ready": preflight.get("network_ready", False),
+        "sdk_ready": preflight.get("sdk_ready", False),
+        "overall_ready": preflight.get("overall_ready", False),
         "status": "pass" if preflight.get("overall_ready") else "fail",
         "preflight": preflight,
     }

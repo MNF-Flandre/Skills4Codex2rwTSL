@@ -100,6 +100,8 @@
   "tsl_output": {},
   "metadata": {
     "adapter": "none",
+    "requested_adapter": "auto",
+    "actual_adapter": "none",
     "adapter_resolution": {
       "requested_adapter": "auto",
       "actual_adapter": "none",
@@ -114,6 +116,7 @@
     "lint_error_count": 2,
     "runtime_status": "skipped",
     "runtime_stage": "",
+    "connection_mode": "",
     "runtime_errors": [],
     "runtime_skipped": true,
     "skip_reason": "lint_policy_blocked_by_error",
