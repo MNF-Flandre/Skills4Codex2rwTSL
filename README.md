@@ -317,23 +317,23 @@ PYTHONPATH=python python -m tsl_validation.cli validate   examples/live_cases/li
 仍需本地补充：
 - 真实 pyTSL SDK 精确 connect/execute 签名与返回结构映射（文件内已显式 `TODO(integration point)`）
 
-## Live pyTSL school-network trial
+## Live pyTSL local-network trial
 
 Two connection modes are modeled:
 
 - `remote_api`
 - `local_client_bridge`
 
-For this repo, the validated school-network path is `local_client_bridge`.
+For this repo, the validated institution-specific local bridge path is `local_client_bridge`.
 
 ### Local setup
 
-1. Connect to the campus network first.
+1. Connect to your required internal network first.
 2. Copy `.env.example` to `.env.local`.
 3. Fill in or export:
    - `PYTSL_CONNECTION_MODE=local_client_bridge`
-   - `PYTSL_HOST=10.15.21.181`
-   - `PYTSL_PORT=443`
+   - `PYTSL_HOST=TODO_LOCAL_HOST`
+   - `PYTSL_PORT=TODO_LOCAL_PORT`
    - `PYTSL_USERNAME=...`
    - `PYTSL_PASSWORD=...`
 4. Keep real credentials out of git. `.env`, `.env.local`, and `config/*.local.env` are ignored.
@@ -354,8 +354,8 @@ The smoke template is wired for the validated local bridge path. The oracle temp
 
 ### Current machine status
 
-- `TSLPy312` is importable from `AnalyseNG.NET`
-- TCP to `10.15.21.181:443` is reachable
+- Runtime SDK module is importable from local SDK path
+- TCP to `TODO_LOCAL_HOST:TODO_LOCAL_PORT` is reachable
 - `local_client_bridge` smoke execution passes once credentials are supplied
 - live oracle remains partially blocked until a reference source is wired
 

@@ -12,8 +12,8 @@
     "runtime_case": {
       "connection_mode": "local_client_bridge",
       "network_required": false,
-      "host": "10.15.21.181",
-      "port": 443,
+      "host": "TODO_LOCAL_HOST",
+      "port": 0,
       "username": "",
       "password": "",
       "symbol": "TODO_LOCAL_SYMBOL",

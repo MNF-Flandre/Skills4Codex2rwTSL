@@ -12,15 +12,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class TestPyTSLAdapter(unittest.TestCase):
-    def test_build_runtime_config_reads_school_env(self):
+    def test_build_runtime_config_reads_runtime_env(self):
         adapter = PyTSLAdapter()
         case = ValidationCase(case_id="live", name="live", parameters={"runtime_case": {}})
         with patch.dict(
             "os.environ",
             {
                 "PYTSL_CONNECTION_MODE": "remote_api",
-                "PYTSL_HOST": "10.15.21.181",
-                "PYTSL_PORT": "443",
+                "PYTSL_HOST": "TODO_LOCAL_HOST",
+                "PYTSL_PORT": "0",
                 "PYTSL_USERNAME": "alice",
                 "PYTSL_PASSWORD": "secret",
             },
@@ -28,8 +28,8 @@ class TestPyTSLAdapter(unittest.TestCase):
         ):
             cfg = adapter._build_runtime_config(case)
         self.assertEqual(cfg.get("connection_mode"), "remote_api")
-        self.assertEqual(cfg.get("host"), "10.15.21.181")
-        self.assertEqual(cfg.get("port"), 443)
+        self.assertEqual(cfg.get("host"), "TODO_LOCAL_HOST")
+        self.assertEqual(cfg.get("port"), 0)
         self.assertEqual(cfg.get("username"), "alice")
         self.assertEqual(cfg.get("password"), "secret")
 
@@ -59,8 +59,8 @@ class TestPyTSLAdapter(unittest.TestCase):
                 "runtime_case": {
                     "connection_mode": "remote_api",
                     "network_required": True,
-                    "host": "10.15.21.181",
-                    "port": 443,
+                    "host": "TODO_LOCAL_HOST",
+                    "port": 0,
                     "username": "alice",
                     "password": "secret",
                     "symbol": "000001.SH",
@@ -83,7 +83,7 @@ class TestPyTSLAdapter(unittest.TestCase):
                 "runtime_case": {
                     "connection_mode": "local_client_bridge",
                     "network_required": False,
-                    "host": "10.15.21.181",
+                    "host": "TODO_LOCAL_HOST",
                     "port": 443,
                     "username": "",
                     "password": "",

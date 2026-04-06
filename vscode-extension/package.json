@@ -1,0 +1,201 @@
+{
+  "name": "tsl-workbench",
+  "displayName": "TSL Workbench",
+  "description": "TSL development workbench for VS Code with Python validation backend and Codex-friendly handoff.",
+  "version": "0.1.0",
+  "publisher": "todo-publisher",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:tsl",
+    "onView:tslWorkbench.sidebar",
+    "onCommand:tslWorkbench.configureConnection",
+    "onCommand:tslWorkbench.runPreflight",
+    "onCommand:tslWorkbench.runLintCurrentFile",
+    "onCommand:tslWorkbench.runSmokeCurrentFile",
+    "onCommand:tslWorkbench.runSpecCurrentFile",
+    "onCommand:tslWorkbench.runOracleCurrentFile",
+    "onCommand:tslWorkbench.openLastReport",
+    "onCommand:tslWorkbench.askCodexFixCurrentFile",
+    "onCommand:tslWorkbench.askCodexExplainCurrentError",
+    "onCommand:tslWorkbench.askCodexContinueFromReport",
+    "onCommand:tslWorkbench.refreshSidebar"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tslWorkbench.configureConnection",
+        "title": "TSL: Configure Connection"
+      },
+      {
+        "command": "tslWorkbench.runPreflight",
+        "title": "TSL: Run Preflight"
+      },
+      {
+        "command": "tslWorkbench.runLintCurrentFile",
+        "title": "TSL: Run Lint on Current File"
+      },
+      {
+        "command": "tslWorkbench.runSmokeCurrentFile",
+        "title": "TSL: Run Smoke on Current File"
+      },
+      {
+        "command": "tslWorkbench.runSpecCurrentFile",
+        "title": "TSL: Run Spec on Current File"
+      },
+      {
+        "command": "tslWorkbench.runOracleCurrentFile",
+        "title": "TSL: Run Oracle on Current File"
+      },
+      {
+        "command": "tslWorkbench.openLastReport",
+        "title": "TSL: Open Last Report"
+      },
+      {
+        "command": "tslWorkbench.askCodexFixCurrentFile",
+        "title": "TSL: Ask Codex to Fix Current File"
+      },
+      {
+        "command": "tslWorkbench.askCodexExplainCurrentError",
+        "title": "TSL: Ask Codex to Explain Current Error"
+      },
+      {
+        "command": "tslWorkbench.askCodexContinueFromReport",
+        "title": "TSL: Ask Codex to Continue From Report"
+      },
+      {
+        "command": "tslWorkbench.refreshSidebar",
+        "title": "TSL: Refresh Sidebar"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tslWorkbench",
+          "title": "TSL Workbench",
+          "icon": "resources/tsl.svg"
+        }
+      ]
+    },
+    "views": {
+      "tslWorkbench": [
+        {
+          "id": "tslWorkbench.sidebar",
+          "name": "TSL Workbench"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TSL Workbench",
+      "properties": {
+        "tslWorkbench.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Python executable used to run TSL backend commands."
+        },
+        "tslWorkbench.connection.mode": {
+          "type": "string",
+          "enum": [
+            "remote_api",
+            "local_client_bridge"
+          ],
+          "default": "local_client_bridge",
+          "description": "Connection mode for runtime validation."
+        },
+        "tslWorkbench.connection.host": {
+          "type": "string",
+          "default": "TODO_LOCAL_HOST",
+          "description": "Runtime host for pyTSL bridge."
+        },
+        "tslWorkbench.connection.port": {
+          "type": "number",
+          "default": 0,
+          "description": "Runtime port for pyTSL bridge."
+        },
+        "tslWorkbench.connection.username": {
+          "type": "string",
+          "default": "",
+          "description": "Runtime username for pyTSL bridge."
+        },
+        "tslWorkbench.connection.sdkPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional local SDK path for pyTSL module discovery."
+        },
+        "tslWorkbench.connection.localClientPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional local client path when using local_client_bridge mode."
+        },
+        "tslWorkbench.validation.casePathSmoke": {
+          "type": "string",
+          "default": "examples/live_cases/live_smoke_case.json",
+          "description": "Validation case path for smoke mode."
+        },
+        "tslWorkbench.validation.casePathSpec": {
+          "type": "string",
+          "default": "examples/live_cases/live_smoke_case.json",
+          "description": "Validation case path for spec mode."
+        },
+        "tslWorkbench.validation.casePathOracle": {
+          "type": "string",
+          "default": "examples/live_cases/live_oracle_case.json",
+          "description": "Validation case path for oracle mode."
+        },
+        "tslWorkbench.validation.taskPath": {
+          "type": "string",
+          "default": "examples/golden_cases/task_spec.json",
+          "description": "Task spec path used by validation runner."
+        },
+        "tslWorkbench.validation.reportPath": {
+          "type": "string",
+          "default": "reports/vscode_last_report.md",
+          "description": "Report output path used by extension validations."
+        },
+        "tslWorkbench.codex.handoffOutput": {
+          "type": "string",
+          "enum": [
+            "clipboard",
+            "newDocument",
+            "both"
+          ],
+          "default": "both",
+          "description": "How Codex handoff prompt is emitted."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "tsl",
+        "aliases": [
+          "TSL",
+          "tsl"
+        ],
+        "extensions": [
+          ".tsl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.32",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.8.3"
+  }
+}
