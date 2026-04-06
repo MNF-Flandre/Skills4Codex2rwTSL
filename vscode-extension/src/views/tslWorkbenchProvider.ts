@@ -45,34 +45,6 @@ export class TslWorkbenchProvider implements vscode.TreeDataProvider<WorkbenchIt
         command: 'tslWorkbench.askCodexFixCurrentFile',
         title: 'Ask Codex to Fix',
       }),
-      new WorkbenchItem('Configure Connection', '', {
-        command: 'tslWorkbench.configureConnection',
-        title: 'Configure Connection',
-      }),
-      new WorkbenchItem('Run Preflight', '', {
-        command: 'tslWorkbench.runPreflight',
-        title: 'Run Preflight',
-      }),
-      new WorkbenchItem('Run Smoke', '', {
-        command: 'tslWorkbench.runSmokeCurrentFile',
-        title: 'Run Smoke',
-      }),
-      new WorkbenchItem('Run Spec', '', {
-        command: 'tslWorkbench.runSpecCurrentFile',
-        title: 'Run Spec',
-      }),
-      new WorkbenchItem('Run Oracle', '', {
-        command: 'tslWorkbench.runOracleCurrentFile',
-        title: 'Run Oracle',
-      }),
-      new WorkbenchItem('Open Last Report', '', {
-        command: 'tslWorkbench.openLastReport',
-        title: 'Open Last Report',
-      }),
-      new WorkbenchItem('Ask Codex to Fix', '', {
-        command: 'tslWorkbench.askCodexFixCurrentFile',
-        title: 'Ask Codex to Fix',
-      }),
     ];
   }
 }
