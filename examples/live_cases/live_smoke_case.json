@@ -7,8 +7,8 @@
     "runtime_case": {
       "connection_mode": "local_client_bridge",
       "network_required": false,
-      "host": "TODO_TSL_HOST",
-      "port": 443,
+      "host": "TODO_LOCAL_HOST",
+      "port": 0,
       "username": "",
       "password": "",
       "symbol": "TODO_LOCAL_SYMBOL",
