@@ -286,17 +286,42 @@ def run_validation(
     elif not runtime_ok:
         integration = runtime_payload.get("integration", {})
         runtime_stage = integration.get("stage", "")
-        if runtime_stage == "preflight":
+        payload_failure_kind = runtime_payload.get("failure_kind", "") or integration.get("failure_kind", "")
+        if payload_failure_kind:
+            failure_kind = str(payload_failure_kind)
+        elif runtime_stage == "preflight":
             problems = integration.get("preflight", {}).get("problems", [])
+
             def _problem_kind(item: Any) -> str:
                 if isinstance(item, dict):
                     return str(item.get("kind", ""))
                 return str(item)
+
             kinds = {_problem_kind(p) for p in problems}
             if "runtime_config_missing" in kinds:
                 failure_kind = "config_failure"
+            elif "network_unreachable" in kinds or "tls_handshake_failed" in kinds:
+                failure_kind = "network_failure"
+            elif "sdk_not_ready" in kinds:
+                failure_kind = "sdk_failure"
             else:
                 failure_kind = "preflight_failure"
+        elif runtime_stage == "connect":
+            errors = " ".join(str(err).lower() for err in runtime_errors)
+            if any(token in errors for token in ["invalid username or password", "invalid user", "missing host", "missing port"]):
+                failure_kind = "auth_failure" if "password" in errors or "user" in errors else "connect_failure"
+            elif any(token in errors for token in ["timeout", "timed out", "refused", "unreachable"]):
+                failure_kind = "network_failure"
+            else:
+                failure_kind = "connect_failure"
+        elif runtime_stage == "execute":
+            errors = " ".join(str(err).lower() for err in runtime_errors)
+            if any(token in errors for token in ["statement missing terminator", "syntax", "parse", "compile", "illegal", "unexpected"]):
+                failure_kind = "execute_failure"
+            else:
+                failure_kind = "execute_failure"
+        elif runtime_stage == "normalize_outputs":
+            failure_kind = "normalization_failure"
         else:
             failure_kind = "runtime_failure"
     elif mode in {"spec", "oracle"} and spec_issues:
@@ -314,6 +339,8 @@ def run_validation(
         tsl_output=outputs,
         metadata={
             "adapter": runtime_payload.get("adapter", resolution_info.get("actual_adapter", "unknown")),
+            "requested_adapter": resolution_info.get("requested_adapter", adapter_name),
+            "actual_adapter": resolution_info.get("actual_adapter", runtime_payload.get("adapter", "unknown")),
             "adapter_resolution": resolution_info,
             "execution_mode": runtime_payload.get("execution_mode", "unknown"),
             "validation_mode": mode,
@@ -323,6 +350,7 @@ def run_validation(
             "lint_error_count": lint_errors,
             "runtime_status": runtime_status,
             "runtime_stage": runtime_payload.get("integration", {}).get("stage", ""),
+            "connection_mode": runtime_payload.get("integration", {}).get("connection_mode", runtime_payload.get("integration", {}).get("preflight", {}).get("connection_mode", "")),
             "runtime_errors": runtime_errors,
             "runtime_skipped": runtime_skipped,
             "skip_reason": skip_reason,

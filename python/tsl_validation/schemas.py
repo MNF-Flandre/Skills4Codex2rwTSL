@@ -61,4 +61,21 @@ class ValidationResult:
     diff_report: DiffReport
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        return _jsonable(asdict(self))
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, bytes):
+        for encoding in ("utf-8", "gbk", "gb18030"):
+            try:
+                return value.decode(encoding)
+            except Exception:
+                continue
+        return value.decode("utf-8", errors="ignore")
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, tuple):
+        return [_jsonable(v) for v in value]
+    return value

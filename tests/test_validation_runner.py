@@ -1,6 +1,7 @@
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tsl_validation.runner import run_validation
 from tsl_validation.schemas import TaskSpec, ValidationCase
@@ -73,9 +74,11 @@ class TestValidationRunner(unittest.TestCase):
         source = (ROOT / "examples/golden_cases/mock_pass_case.tsl").read_text(encoding="utf-8")
         case = ValidationCase(**load_json(ROOT / "examples/live_cases/live_smoke_case.json"))
         task = TaskSpec(**load_json(ROOT / "examples/golden_cases/task_spec.json"))
-        result = run_validation(source, case, task, adapter_name="pytsl", mode="smoke", lint_policy="warn")
-        self.assertEqual(result.metadata.get("failure_kind"), "config_failure")
+        with patch.dict("os.environ", {"PYTSL_USERNAME": "", "PYTSL_PASSWORD": ""}, clear=False):
+            result = run_validation(source, case, task, adapter_name="pytsl", mode="smoke", lint_policy="warn")
+        self.assertIn(result.metadata.get("failure_kind"), {"preflight_failure", "network_failure", "sdk_failure", "config_failure"})
         self.assertIn("runtime_stage", result.metadata)
+        self.assertIn("connection_mode", result.metadata)
 
 
 if __name__ == "__main__":

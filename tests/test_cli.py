@@ -11,9 +11,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def run_cli(args):
     cmd = [sys.executable, "-m", "tsl_validation.cli"] + args
-    env = {"PYTHONPATH": str(ROOT / "python")}
-    proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True)
-    payload = json.loads(proc.stdout) if proc.stdout.strip() else {}
+    env = {
+        "PYTHONPATH": str(ROOT / "python"),
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+    }
+    proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, encoding="utf-8", errors="replace")
+    payload = json.loads(proc.stdout) if proc.stdout and proc.stdout.strip() else {}
     return proc.returncode, payload
 
 
@@ -82,6 +86,8 @@ class TestCliExitCodes(unittest.TestCase):
         self.assertIn(code, [0, 1])
         self.assertEqual(payload.get("command"), "preflight")
         self.assertIn("preflight", payload)
+        for key in ["connection_mode", "package_ready", "config_ready", "case_ready", "network_ready", "sdk_ready", "overall_ready"]:
+            self.assertIn(key, payload)
 
 
 if __name__ == "__main__":

@@ -258,6 +258,7 @@ set -a && source .env.local && set +a
 新增 live 模板在 `examples/live_cases/`：
 - `live_smoke_case.json`
 - `live_oracle_case.json`
+- `live_smoke_source.tsl`
 
 live 关键字段放在：
 - `parameters.runtime_case`
@@ -292,13 +293,13 @@ preflight 结构化输出包含：
 #### 4) live smoke
 
 ```bash
-PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/mock_pass_case.tsl   --case examples/live_cases/live_smoke_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode smoke   --lint-policy warn   --report reports/live_smoke_report.md
+PYTHONPATH=python python -m tsl_validation.cli validate   examples/live_cases/live_smoke_source.tsl   --case examples/live_cases/live_smoke_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode smoke   --lint-policy warn   --report reports/live_smoke_report.md
 ```
 
 #### 5) live oracle
 
 ```bash
-PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/mock_pass_case.tsl   --case examples/live_cases/live_oracle_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode oracle   --lint-policy warn   --report reports/live_oracle_report.md
+PYTHONPATH=python python -m tsl_validation.cli validate   examples/live_cases/live_smoke_source.tsl   --case examples/live_cases/live_oracle_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode oracle   --lint-policy warn   --report reports/live_oracle_report.md
 ```
 
 #### 6) adapter 选择语义
@@ -315,3 +316,58 @@ PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/
 
 仍需本地补充：
 - 真实 pyTSL SDK 精确 connect/execute 签名与返回结构映射（文件内已显式 `TODO(integration point)`）
+
+## Live pyTSL school-network trial
+
+Two connection modes are modeled:
+
+- `remote_api`
+- `local_client_bridge`
+
+For this repo, the validated school-network path is `local_client_bridge`.
+
+### Local setup
+
+1. Connect to the campus network first.
+2. Copy `.env.example` to `.env.local`.
+3. Fill in or export:
+   - `PYTSL_CONNECTION_MODE=local_client_bridge`
+   - `PYTSL_HOST=10.15.21.181`
+   - `PYTSL_PORT=443`
+   - `PYTSL_USERNAME=...`
+   - `PYTSL_PASSWORD=...`
+4. Keep real credentials out of git. `.env`, `.env.local`, and `config/*.local.env` are ignored.
+
+### Live cases
+
+- `examples/live_cases/live_smoke_case.json`
+- `examples/live_cases/live_oracle_case.json`
+- `examples/live_cases/live_smoke_source.tsl`
+
+The smoke template is wired for the validated local bridge path. The oracle template is still a placeholder until the real reference source and return schema are wired.
+
+### Recommended run order
+
+1. `python -m tsl_validation.cli preflight --case examples/live_cases/live_smoke_case.json`
+2. `python -m tsl_validation.cli validate examples/live_cases/live_smoke_source.tsl --case examples/live_cases/live_smoke_case.json --task examples/golden_cases/task_spec.json --adapter pytsl --mode smoke --lint-policy warn --report reports/live_smoke_report.md`
+3. `python -m tsl_validation.cli validate examples/live_cases/live_smoke_source.tsl --case examples/live_cases/live_oracle_case.json --task examples/golden_cases/task_spec.json --adapter pytsl --mode oracle --lint-policy warn --report reports/live_oracle_report.md` if a real oracle source is wired
+
+### Current machine status
+
+- `TSLPy312` is importable from `AnalyseNG.NET`
+- TCP to `10.15.21.181:443` is reachable
+- `local_client_bridge` smoke execution passes once credentials are supplied
+- live oracle remains partially blocked until a reference source is wired
+
+### Common first failure layers
+
+1. Missing or blank credentials
+2. Runtime package missing or wrong bitness
+3. Connect/login/session failure
+4. Output normalization mismatch
+5. Oracle/reference source design gap
+
+### TODO(integration point)
+
+- Map the real pyTSL oracle/reference source and return schema
+- Document the live oracle comparison contract once it exists

@@ -156,3 +156,63 @@ runner/report 现在可区分：
 ### 13.5 仍是 TODO(integration point)
 - 真实 pyTSL SDK 的精确 connect/execute 调用签名仍需本地按 SDK 文档收敛。
 - 当前实现故意不硬猜 SDK 专有 API，所有不确定点均显式标注 `TODO(integration point)`。
+
+## Live pyTSL notes
+
+This prototype now treats the school environment as a real live target instead of a mock-only demo.
+
+### Modes
+
+- `remote_api`
+- `local_client_bridge`
+
+### School-network setup
+
+- Connect to the campus network first.
+- Set `PYTSL_CONNECTION_MODE=local_client_bridge`.
+- Use host `10.15.21.181` and port `443`.
+- Fill `PYTSL_USERNAME` and `PYTSL_PASSWORD` in a local untracked env file.
+
+### Live case fields
+
+The live case templates now carry:
+
+- `host`, `port`, `username`, `password`
+- `connection_mode`
+- `network_required`
+- `symbol`, `period`, `start_date`, `end_date`
+- `market`, `adjust_mode`, `extra_system_params`
+- `connection_label`
+- `note` explaining which fields come from env versus case
+- `examples/live_cases/live_smoke_source.tsl` as the minimal validated smoke source
+
+### Preflight fields
+
+The adapter preflight now reports:
+
+- `package_ready`
+- `config_ready`
+- `case_ready`
+- `network_ready`
+- `sdk_ready`
+- `connection_mode`
+- `overall_ready`
+- `problems`
+
+### Current machine facts
+
+- Python is 64-bit.
+- `TSLPy312` is importable from `AnalyseNG.NET`.
+- `10.15.21.181:443` accepts TCP.
+- `local_client_bridge` smoke execution now passes once credentials are supplied.
+
+### Run order
+
+1. `preflight`
+2. `validate --adapter pytsl --mode smoke`
+3. `validate --adapter pytsl --mode oracle` if a real oracle source is wired
+
+### Still TODO
+
+- Real oracle/reference source wiring for live mode
+- Exact live oracle return schema and comparison contract

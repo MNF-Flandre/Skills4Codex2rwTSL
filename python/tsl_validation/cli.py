@@ -52,6 +52,13 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     payload = {
         "command": "preflight",
         "adapter": "pytsl",
+        "connection_mode": preflight.get("connection_mode", ""),
+        "package_ready": preflight.get("package_ready", False),
+        "config_ready": preflight.get("config_ready", False),
+        "case_ready": preflight.get("case_ready", False),
+        "network_ready": preflight.get("network_ready", False),
+        "sdk_ready": preflight.get("sdk_ready", False),
+        "overall_ready": preflight.get("overall_ready", False),
         "status": "pass" if preflight.get("overall_ready") else "fail",
         "preflight": preflight,
     }
@@ -92,6 +99,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
         "mode": args.mode,
         "lint_policy": args.lint_policy,
         "exit_code": exit_code,
+        "requested_adapter": result.metadata.get("requested_adapter", args.adapter),
+        "actual_adapter": result.metadata.get("actual_adapter", result.metadata.get("adapter", args.adapter)),
+        "connection_mode": result.metadata.get("connection_mode", ""),
         "adapter_resolution": result.metadata.get("adapter_resolution", {}),
         "runtime_stage": result.metadata.get("runtime_stage", ""),
         "result": result.to_dict(),
