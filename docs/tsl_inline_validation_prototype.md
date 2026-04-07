@@ -166,11 +166,11 @@ This prototype now treats the school environment as a real live target instead o
 - `remote_api`
 - `local_client_bridge`
 
-### School-network setup
+### Local-network setup
 
-- Connect to the campus network first.
+- Connect to your required internal network first.
 - Set `PYTSL_CONNECTION_MODE=local_client_bridge`.
-- Use host `10.15.21.181` and port `443`.
+- Use host `TODO_LOCAL_HOST` and port `TODO_LOCAL_PORT`.
 - Fill `PYTSL_USERNAME` and `PYTSL_PASSWORD` in a local untracked env file.
 
 ### Live case fields
@@ -202,8 +202,8 @@ The adapter preflight now reports:
 ### Current machine facts
 
 - Python is 64-bit.
-- `TSLPy312` is importable from `AnalyseNG.NET`.
-- `10.15.21.181:443` accepts TCP.
+- Runtime SDK module is importable from your local SDK path.
+- `TODO_LOCAL_HOST:TODO_LOCAL_PORT` accepts TCP.
 - `local_client_bridge` smoke execution now passes once credentials are supplied.
 
 ### Run order
