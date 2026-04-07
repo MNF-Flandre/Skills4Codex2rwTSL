@@ -4,7 +4,14 @@ import * as vscode from 'vscode';
 import { ConfigurationService } from '../config/configurationService';
 import { PathResolver } from '../services/pathResolver';
 import { AskFixPayload, BackendSummary, ConnectionProfile, LintPayload, PreflightPayload, ValidationMode, ValidationPayload } from '../types';
-import { buildRunnerEnv, buildValidateArgs, ensureFileExists, parseJsonPayload } from './runnerUtils';
+import {
+  buildRunnerEnv,
+  buildRunnerExecOptions,
+  buildValidateArgs,
+  ensureFileExists,
+  formatRunnerExecError,
+  parseJsonPayload,
+} from './runnerUtils';
 
 export class PythonBackendRunner {
   public constructor(
@@ -219,18 +226,19 @@ export class PythonBackendRunner {
     this.output.appendLine(`$ ${pythonPath} ${args.join(' ')}`);
 
     const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      const execOptions = buildRunnerExecOptions(backendRoot);
       execFile(
         pythonPath,
         args,
         {
-          cwd: backendRoot,
+          cwd: execOptions.cwd,
           env,
-          timeout: 120000,
-          maxBuffer: 10 * 1024 * 1024,
+          timeout: execOptions.timeout,
+          maxBuffer: execOptions.maxBuffer,
         },
         (error, stdout, stderr) => {
           if (error) {
-            reject(new Error(`${error.message}\n${stderr || stdout}`));
+            reject(new Error(formatRunnerExecError(error.message, stderr ?? '', stdout ?? '')));
             return;
           }
           resolve({ stdout: stdout ?? '', stderr: stderr ?? '' });

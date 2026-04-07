@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRunnerEnv, buildValidateArgs, parseJsonPayload } from '../backend/runnerUtils';
+import {
+  buildRunnerEnv,
+  buildRunnerExecOptions,
+  buildValidateArgs,
+  formatRunnerExecError,
+  parseJsonPayload,
+} from '../backend/runnerUtils';
 import { ConnectionProfile } from '../types';
 
 test('parseJsonPayload parses plain JSON and fallback JSON blocks', () => {
@@ -50,4 +56,20 @@ test('buildValidateArgs assembles mode/adapter/case/task/report correctly', () =
     '--report',
     '/w/report.md',
   ]);
+});
+
+test('buildRunnerExecOptions sets cwd timeout and maxBuffer', () => {
+  const options = buildRunnerExecOptions('/repo');
+  assert.equal(options.cwd, '/repo');
+  assert.equal(options.timeout, 120000);
+  assert.equal(options.maxBuffer, 10 * 1024 * 1024);
+});
+
+test('formatRunnerExecError appends stderr/stdout detail when available', () => {
+  const withDetail = formatRunnerExecError('spawn failed', 'traceback...', '');
+  assert.match(withDetail, /spawn failed/);
+  assert.match(withDetail, /traceback/);
+
+  const noDetail = formatRunnerExecError('spawn failed', '', '');
+  assert.equal(noDetail, 'spawn failed');
 });

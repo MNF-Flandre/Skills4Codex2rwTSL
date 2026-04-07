@@ -62,6 +62,14 @@
 
 > 扩展层不重写 pyTSL 逻辑；仅做 VS Code 集成与交互。
 
+扩展当前已支持本地 release-hardening 流程：
+- `npm install`
+- `npm run compile`
+- `npm test`
+- `npm run package`（产出 `.vsix`）
+
+并在首次激活时给出配置/预检下一步引导（backend root / connection / preflight）。
+
 ---
 
 ## 🧪 TSL Inline Validation Prototype（v0.1）

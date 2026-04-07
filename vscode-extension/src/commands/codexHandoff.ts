@@ -4,8 +4,9 @@ import * as vscode from 'vscode';
 import { PythonBackendRunner } from '../backend/pythonRunner';
 import { ExtensionRuntimeState } from '../types';
 import { buildCodexPrompt, HandoffMode, PromptStyle } from './codexPrompt';
+import { buildFallbackRepairPayloadFromSource, HandoffOutputMode, summarizeHandoffReady } from './handoffCore';
 
-type OutputMode = 'clipboard' | 'newDocument' | 'both' | 'workspaceTempFile';
+type OutputMode = HandoffOutputMode;
 
 export async function askCodexFixCurrentFile(
   runner: PythonBackendRunner,
@@ -61,7 +62,10 @@ async function handoffFromFileOrSelection(
   }
 
   const hasReport = fs.existsSync(reportPath);
-  const repair = hasReport ? (await runner.askFix(filePath, reportPath)).repair_payload ?? {} : buildFallbackRepairPayload(filePath, mode);
+  const repair =
+    hasReport
+      ? (await runner.askFix(filePath, reportPath)).repair_payload ?? {}
+      : buildFallbackRepairPayloadFromSource(fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '', mode);
   const selectedSource = getCurrentSelectionSource();
   const source = forceSelection && !selectedSource ? '' : selectedSource || String(repair.source ?? '');
   if (forceSelection && !source) {
@@ -71,32 +75,14 @@ async function handoffFromFileOrSelection(
   const style = getPromptStyle();
   const prompt = buildCodexPrompt(mode, { ...repair, source }, style);
   const outputMode = getOutputMode();
-  await emitPrompt(prompt, outputMode);
+  const outputPath = await emitPrompt(prompt, outputMode);
 
   state.codexHandoffStatus = `${mode} ready (${style}/${outputMode})`;
   state.lastFilePath = filePath;
   state.statusBarSummary = '$(comment-discussion) TSL Handoff Ready';
-  output.appendLine(`Codex handoff prompt generated: mode=${mode}, style=${style}, output=${outputMode}`);
-}
-
-function buildFallbackRepairPayload(filePath: string, mode: HandoffMode): Record<string, unknown> {
-  const source = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
-  return {
-    source,
-    diagnostics: [],
-    validation_mode: mode === 'continue' ? 'unknown' : mode,
-    failure_kind: 'report_missing',
-    diff_summary: 'No validation report found. Run smoke/spec/oracle first for richer context.',
-    mismatch_fields: [],
-    reference_strategy: 'unknown',
-    runtime_adapter: 'unknown',
-    runtime_stage: '',
-    runtime_errors: [],
-    runtime_intermediate_trace: [],
-    runtime_final_env: {},
-    suggested_next_action: 'Run smoke/spec/oracle on current file, then retry Codex handoff.',
-    minimal_repro_case: {},
-  };
+  const ready = summarizeHandoffReady(mode, style, outputMode, outputPath);
+  output.appendLine(ready);
+  vscode.window.showInformationMessage(ready);
 }
 
 function getCurrentTslFilePath(targetUri?: vscode.Uri): string | undefined {
@@ -130,7 +116,7 @@ function getOutputMode(): OutputMode {
   return 'both';
 }
 
-export async function emitPrompt(prompt: string, outputMode: OutputMode): Promise<void> {
+export async function emitPrompt(prompt: string, outputMode: OutputMode): Promise<string | undefined> {
   if (outputMode === 'clipboard' || outputMode === 'both') {
     await vscode.env.clipboard.writeText(prompt);
   }
@@ -154,5 +140,7 @@ export async function emitPrompt(prompt: string, outputMode: OutputMode): Promis
     fs.writeFileSync(filePath, prompt, 'utf-8');
     const doc = await vscode.workspace.openTextDocument(filePath);
     await vscode.window.showTextDocument(doc, { preview: false });
+    return filePath;
   }
+  return undefined;
 }
