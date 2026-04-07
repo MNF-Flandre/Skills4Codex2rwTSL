@@ -20,7 +20,7 @@ class TestPyTSLAdapter(unittest.TestCase):
             {
                 "PYTSL_CONNECTION_MODE": "remote_api",
                 "PYTSL_HOST": "TODO_LOCAL_HOST",
-                "PYTSL_PORT": "0",
+                "PYTSL_PORT": "443",
                 "PYTSL_USERNAME": "alice",
                 "PYTSL_PASSWORD": "secret",
             },
@@ -29,7 +29,7 @@ class TestPyTSLAdapter(unittest.TestCase):
             cfg = adapter._build_runtime_config(case)
         self.assertEqual(cfg.get("connection_mode"), "remote_api")
         self.assertEqual(cfg.get("host"), "TODO_LOCAL_HOST")
-        self.assertEqual(cfg.get("port"), 0)
+        self.assertEqual(cfg.get("port"), 443)
         self.assertEqual(cfg.get("username"), "alice")
         self.assertEqual(cfg.get("password"), "secret")
 
@@ -60,7 +60,7 @@ class TestPyTSLAdapter(unittest.TestCase):
                     "connection_mode": "remote_api",
                     "network_required": True,
                     "host": "TODO_LOCAL_HOST",
-                    "port": 0,
+                    "port": 443,
                     "username": "alice",
                     "password": "secret",
                     "symbol": "000001.SH",

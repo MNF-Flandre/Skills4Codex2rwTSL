@@ -92,8 +92,11 @@ export class PythonBackendRunner {
       prompt: 'Runtime port (1-65535)',
       value: current.port > 0 ? String(current.port) : '',
       validateInput: (value) => {
+        if (!/^\d+$/.test(value.trim())) {
+          return 'Port must be an integer between 1 and 65535.';
+        }
         const parsed = Number.parseInt(value, 10);
-        if (!Number.isFinite(parsed) || parsed < 1 || parsed > 65535) {
+        if (Number.isNaN(parsed) || parsed < 1 || parsed > 65535) {
           return 'Port must be an integer between 1 and 65535.';
         }
         return undefined;

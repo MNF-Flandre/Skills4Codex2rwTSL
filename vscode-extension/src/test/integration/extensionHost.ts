@@ -44,10 +44,14 @@ export async function run(): Promise<void> {
 
 async function configureWorkspace(workspaceFolder: string): Promise<void> {
   const cfg = vscode.workspace.getConfiguration('tslWorkbench');
-  const backendRoot = process.env.TSL_TEST_BACKEND_ROOT || path.resolve(workspaceFolder, '..', '..', '..');
+  const backendRoot = process.env.TSL_TEST_BACKEND_ROOT;
+  assert.ok(
+    backendRoot,
+    'TSL_TEST_BACKEND_ROOT environment variable must be set to backend repository root for extension host integration tests.'
+  );
   await Promise.all([
     cfg.update('backend.mode', 'external_workspace_mode', vscode.ConfigurationTarget.Workspace),
-    cfg.update('backend.root', backendRoot, vscode.ConfigurationTarget.Workspace),
+    cfg.update('backend.root', backendRoot as string, vscode.ConfigurationTarget.Workspace),
     cfg.update('validation.adapter', 'mock', vscode.ConfigurationTarget.Workspace),
     cfg.update('connection.host', 'TODO_LOCAL_HOST', vscode.ConfigurationTarget.Workspace),
     cfg.update('connection.port', 443, vscode.ConfigurationTarget.Workspace),
@@ -55,4 +59,3 @@ async function configureWorkspace(workspaceFolder: string): Promise<void> {
     cfg.update('codex.handoffOutput', 'workspaceTempFile', vscode.ConfigurationTarget.Workspace),
   ]);
 }
-

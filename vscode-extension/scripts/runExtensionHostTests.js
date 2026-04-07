@@ -19,8 +19,9 @@ async function main() {
 
 main().catch((error) => {
   const message = error && error.message ? String(error.message) : String(error);
-  const networkBlocked =
-    message.includes('ENOTFOUND') || message.includes('update.code.visualstudio.com') || message.includes('ECONNREFUSED');
+  const errorCode = error && error.code ? String(error.code) : '';
+  const errorHost = error && error.hostname ? String(error.hostname) : '';
+  const networkBlocked = errorCode === 'ENOTFOUND' || errorCode === 'ECONNREFUSED' || errorHost === 'update.code.visualstudio.com';
   if (networkBlocked && process.env.TSL_STRICT_INTEGRATION_TESTS !== '1') {
     console.warn('[warn] Extension Host integration tests skipped: VS Code test binary download unavailable.');
     console.warn('[warn] To enforce failure on download/setup problems, set TSL_STRICT_INTEGRATION_TESTS=1.');
