@@ -20,7 +20,6 @@
     "python",
     "workbench"
   ],
-  "icon": "resources/tsl.svg",
   "activationEvents": [
     "onLanguage:tsl",
     "onView:tslWorkbench.sidebar",
