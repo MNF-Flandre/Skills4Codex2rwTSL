@@ -82,7 +82,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run a tiny local-client-bridge pyTSL smoke test.")
     parser.add_argument("--connection-mode", default=os.getenv("PYTSL_CONNECTION_MODE", "local_client_bridge"))
     parser.add_argument("--host", default=os.getenv("PYTSL_HOST", "TODO_LOCAL_HOST"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("PYTSL_PORT", "0")))
+    parser.add_argument("--port", type=int, default=int(os.getenv("PYTSL_PORT", "443")))
     parser.add_argument("--username", default=os.getenv("PYTSL_USERNAME", ""))
     parser.add_argument("--password", default=os.getenv("PYTSL_PASSWORD", ""))
     parser.add_argument("--symbol", default=os.getenv("PYTSL_SYMBOL", "TODO_LOCAL_SYMBOL"))
