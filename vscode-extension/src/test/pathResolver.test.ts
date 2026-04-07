@@ -53,3 +53,31 @@ test('PathResolver throws clear error when backend not found', () => {
   );
 });
 
+test('PathResolver auto mode detects workspace backend root', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tsl-ext-'));
+  makeBackendRoot(tmp);
+  const resolver = new PathResolver({
+    workspaceRoot: tmp,
+    extensionPath: '/extension',
+    backendMode: 'auto',
+    configuredBackendRoot: '',
+    pythonModulePath: 'python',
+  });
+  const summary = resolver.getBackendSummary();
+  assert.equal(summary.discoverySource, 'workspace');
+  assert.equal(summary.effectiveMode, 'repo_attached_mode');
+});
+
+test('PathResolver repo_attached_mode can use configured relative root', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsl-ext-workspace-'));
+  const backendDir = path.join(workspaceRoot, 'backend');
+  makeBackendRoot(backendDir);
+  const resolver = new PathResolver({
+    workspaceRoot,
+    extensionPath: '/extension',
+    backendMode: 'repo_attached_mode',
+    configuredBackendRoot: 'backend',
+    pythonModulePath: 'python',
+  });
+  assert.equal(resolver.getBackendRoot(), backendDir);
+});

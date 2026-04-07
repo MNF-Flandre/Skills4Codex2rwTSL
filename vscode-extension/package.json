@@ -5,6 +5,14 @@
   "version": "0.1.0",
   "publisher": "todo-publisher",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MNF-Flandre/Skills4Codex2rwTSL.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MNF-Flandre/Skills4Codex2rwTSL/issues"
+  },
+  "homepage": "https://github.com/MNF-Flandre/Skills4Codex2rwTSL",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -207,6 +215,16 @@
           "default": "reports/vscode_last_report.md",
           "description": "Report output path used by extension validations. Relative paths resolve from workspace root."
         },
+        "tslWorkbench.validation.adapter": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "mock",
+            "pytsl"
+          ],
+          "default": "auto",
+          "description": "Validation adapter passed to backend validate command."
+        },
         "tslWorkbench.codex.handoffOutput": {
           "type": "string",
           "enum": [
@@ -248,8 +266,13 @@
         },
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.askCodexHandOffSelection",
+          "command": "tslWorkbench.runSpecCurrentFile",
           "group": "tsl@4"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.askCodexHandOffSelection",
+          "group": "tsl@5"
         }
       ],
       "editor/title": [
@@ -272,8 +295,13 @@
         },
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.askCodexFixCurrentFile",
+          "command": "tslWorkbench.runSmokeCurrentFile",
           "group": "tsl@2"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.askCodexFixCurrentFile",
+          "group": "tsl@3"
         }
       ],
       "view/title": [

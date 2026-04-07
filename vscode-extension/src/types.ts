@@ -1,4 +1,5 @@
 export type ValidationMode = 'smoke' | 'spec' | 'oracle';
+export type ValidationAdapter = 'auto' | 'mock' | 'pytsl';
 export type BackendMode = 'auto' | 'repo_attached_mode' | 'external_workspace_mode';
 export type ConnectionMode = 'remote_api' | 'local_client_bridge';
 export type RuntimeStatus = 'unknown' | 'ready' | 'pass' | 'fail' | 'blocked' | 'not_configured';

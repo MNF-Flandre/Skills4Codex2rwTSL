@@ -22,6 +22,12 @@ npm test
 npm run package
 ```
 
+Development Host (F5):
+
+1. Open `vscode-extension/` in VS Code.
+2. Run `npm install` once.
+3. Press `F5` to launch Extension Development Host.
+
 Install generated `.vsix`:
 
 1. VS Code → Command Palette → `Extensions: Install from VSIX...`
@@ -61,6 +67,19 @@ Extra commands:
 - `TSL: Clear Stored Password`
 - `TSL: Reset Connection Config`
 - `TSL: Reveal Current Connection Summary`
+
+Validation adapter setting:
+
+- `tslWorkbench.validation.adapter`: `auto` (default) / `mock` / `pytsl`
+- Recommended default for mixed environments: `auto`
+
+## First-use path (recommended)
+
+1. Configure `tslWorkbench.backend.mode` and `tslWorkbench.backend.root` (if needed).
+2. Run `TSL: Configure Connection`.
+3. Run `TSL: Run Preflight`.
+4. Open a `.tsl` file and run `TSL: Run Smoke on Current File`.
+5. If needed, run `TSL: Ask Codex to Fix Current File`.
 
 ## Codex handoff workflow
 

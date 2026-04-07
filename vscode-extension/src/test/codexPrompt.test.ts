@@ -16,7 +16,9 @@ test('buildCodexPrompt full mode contains key fields', () => {
   );
   assert.match(prompt, /Validation mode: oracle/);
   assert.match(prompt, /Failure kind: oracle_mismatch/);
-  assert.match(prompt, /Current TSL source/);
+  assert.match(prompt, /Task Goal/);
+  assert.match(prompt, /Action request/);
+  assert.match(prompt, /Current TSL Source/);
 });
 
 test('buildCodexPrompt concise mode is shorter and keeps objective', () => {
@@ -25,4 +27,3 @@ test('buildCodexPrompt concise mode is shorter and keeps objective', () => {
   assert.match(prompt, /Objective/);
   assert.match(prompt, /x := 1;/);
 });
-
