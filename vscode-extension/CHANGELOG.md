@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2-hardened-beta
+## 0.2.2
 
 - Added real Extension Host integration test lane using `@vscode/test-electron` and wired it into `npm test`.
 - Added `TSL: Run Diagnostic Wizard` command with layered checks:
