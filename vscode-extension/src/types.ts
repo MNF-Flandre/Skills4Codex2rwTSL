@@ -1,4 +1,7 @@
 export type ValidationMode = 'smoke' | 'spec' | 'oracle';
+export type BackendMode = 'auto' | 'repo_attached_mode' | 'external_workspace_mode';
+export type ConnectionMode = 'remote_api' | 'local_client_bridge';
+export type RuntimeStatus = 'unknown' | 'ready' | 'pass' | 'fail' | 'blocked' | 'not_configured';
 
 export interface LintDiagnostic {
   severity: 'error' | 'warning' | 'info' | string;
@@ -51,12 +54,33 @@ export interface AskFixPayload {
   repair_payload: Record<string, unknown>;
 }
 
+export interface ConnectionProfile {
+  host: string;
+  port: number;
+  username: string;
+  mode: ConnectionMode;
+  sdkPath: string;
+  localClientPath: string;
+  hasPassword: boolean;
+}
+
+export interface BackendSummary {
+  mode: BackendMode;
+  effectiveMode: 'repo_attached_mode' | 'external_workspace_mode';
+  backendRoot: string;
+  pythonModulePath: string;
+  discoverySource: 'configured' | 'workspace' | 'extension_parent';
+}
+
 export interface ExtensionRuntimeState {
   connectionSummary: string;
+  backendSummary: string;
   preflightStatus: string;
   validationStatus: string;
   lastValidationMode: string;
+  lastFailureKind: string;
   lastReportPath: string;
   lastFilePath: string;
   codexHandoffStatus: string;
+  statusBarSummary: string;
 }

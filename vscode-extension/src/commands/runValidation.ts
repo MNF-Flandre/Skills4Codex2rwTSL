@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
-import { ensureFileExists, PythonBackendRunner } from '../backend/pythonRunner';
+import { PythonBackendRunner } from '../backend/pythonRunner';
+import { ensureFileExists } from '../backend/runnerUtils';
 import { ExtensionRuntimeState, LintDiagnostic, ValidationMode } from '../types';
 
 export async function runLintCurrentFile(
@@ -17,7 +18,9 @@ export async function runLintCurrentFile(
 
   state.validationStatus = payload.status;
   state.lastValidationMode = 'lint';
+  state.lastFailureKind = payload.status === 'fail' ? 'lint_error' : 'none';
   state.lastFilePath = filePath;
+  state.statusBarSummary = payload.status === 'pass' ? 'TSL: Ready' : 'TSL: Lint failed';
 
   output.appendLine(`Lint ${payload.status}: ${filePath}`);
   vscode.window.showInformationMessage(`TSL lint ${payload.status}: ${payload.diagnostic_count} diagnostics`);
@@ -28,12 +31,13 @@ export async function runPreflight(
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel
 ): Promise<void> {
-  const casePath = resolveCasePath('smoke');
+  const casePath = runner.getPreflightCasePath();
   ensureFileExists(casePath);
 
-  const payload = await runner.preflight(casePath);
+  const payload = await runner.preflight();
   state.preflightStatus = payload.status;
   state.connectionSummary = await runner.getConnectionSummary();
+  state.statusBarSummary = payload.status === 'pass' ? 'TSL: Connected' : 'TSL: Preflight failed';
 
   output.appendLine(`Preflight ${payload.status}: mode=${payload.connection_mode}`);
   if (payload.status === 'pass') {
@@ -60,8 +64,10 @@ export async function runValidationMode(
   const reportPath = runner.getLastReportPath();
   state.validationStatus = payload.status;
   state.lastValidationMode = mode;
+  state.lastFailureKind = payload.failure_kind || 'none';
   state.lastReportPath = reportPath;
   state.lastFilePath = filePath;
+  state.statusBarSummary = payload.status === 'pass' ? 'TSL: Connected' : 'TSL: Validation failed';
 
   output.appendLine(`Validation ${mode} ${payload.status}: ${filePath}`);
 
@@ -84,13 +90,8 @@ export async function openLastReport(state: ExtensionRuntimeState): Promise<void
   await vscode.window.showTextDocument(doc, { preview: false });
 }
 
-function publishDiagnostics(
-  filePath: string,
-  lintDiagnostics: LintDiagnostic[],
-  diagnostics: vscode.DiagnosticCollection
-): void {
-  const uri = vscode.Uri.file(filePath);
-  const converted = lintDiagnostics.map((item) => {
+export function convertLintDiagnostics(filePath: string, lintDiagnostics: LintDiagnostic[]): vscode.Diagnostic[] {
+  return lintDiagnostics.map((item) => {
     const line = Math.max(0, (item.range?.[0] ?? 1) - 1);
     const col = Math.max(0, (item.range?.[1] ?? 1) - 1);
     const range = new vscode.Range(line, col, line, col + 1);
@@ -106,8 +107,14 @@ function publishDiagnostics(
     d.source = 'tsl-validation';
     return d;
   });
+}
 
-  diagnostics.set(uri, converted);
+function publishDiagnostics(
+  filePath: string,
+  lintDiagnostics: LintDiagnostic[],
+  diagnostics: vscode.DiagnosticCollection
+): void {
+  diagnostics.set(vscode.Uri.file(filePath), convertLintDiagnostics(filePath, lintDiagnostics));
 }
 
 function requireCurrentTslFilePath(): string {
@@ -116,15 +123,4 @@ function requireCurrentTslFilePath(): string {
     throw new Error('Open a .tsl file first.');
   }
   return editor.document.uri.fsPath;
-}
-
-function resolveCasePath(mode: ValidationMode): string {
-  const cfg = vscode.workspace.getConfiguration('tslWorkbench');
-  const key = `validation.casePath${mode.charAt(0).toUpperCase()}${mode.slice(1)}`;
-  const value = String(cfg.get(key, ''));
-  const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspace) {
-    return value;
-  }
-  return value.startsWith('/') ? value : `${workspace}/${value}`;
 }
