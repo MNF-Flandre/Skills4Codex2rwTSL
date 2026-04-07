@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class TestPyTSLAdapter(unittest.TestCase):
-    def test_build_runtime_config_reads_runtime_env(self):
+    def test_build_runtime_config_reads_connection_env(self):
         adapter = PyTSLAdapter()
         case = ValidationCase(case_id="live", name="live", parameters={"runtime_case": {}})
         with patch.dict(
