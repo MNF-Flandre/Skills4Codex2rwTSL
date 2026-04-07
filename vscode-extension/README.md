@@ -13,7 +13,7 @@ It uses the existing Python backend (`python/tsl_validation` + `python/ide_bridg
 
 ## Install and run locally
 
-From `/home/runner/work/Skills4Codex2rwTSL/Skills4Codex2rwTSL/vscode-extension`:
+From the `vscode-extension/` directory:
 
 ```bash
 npm install
@@ -87,4 +87,3 @@ Prompt style:
 - This extension still depends on a valid Python backend project root.
 - It is validation-driven (not a full LSP implementation).
 - `publisher` is placeholder (`todo-publisher`); replace before Marketplace release.
-
