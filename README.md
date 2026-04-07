@@ -67,6 +67,7 @@
 - `npm run compile`
 - `npm test`
 - `npm run package`（产出 `.vsix`）
+- `npm run release:check`（正式发布前门禁：publisher/icon/readiness）
 
 并在首次激活时给出配置/预检下一步引导（backend root / connection / preflight）。
 其中 `npm test` 已包含 Extension Host 集成测试（真实 VS Code 宿主层 smoke）。

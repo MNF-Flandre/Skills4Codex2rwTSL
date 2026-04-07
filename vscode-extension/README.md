@@ -23,6 +23,12 @@ npm test
 npm run package
 ```
 
+Formal-release gate command:
+
+```bash
+npm run release:check
+```
+
 `npm test` now runs:
 - unit tests (`node --test`)
 - Extension Host integration tests (`@vscode/test-electron`)
@@ -134,18 +140,25 @@ Prompt style:
 
 - This extension still depends on a valid Python backend project root.
 - It is validation-driven (not a full LSP implementation).
-- `publisher` is placeholder (`todo-publisher`); replace before Marketplace release.
+- Marketplace publish still requires verified publisher ownership (`mnf-flandre`) in VS Code Marketplace.
 - Live `pytsl` execution still depends on local SDK/runtime/account environment; use adapter `auto`/`mock` for non-live setups.
 
 ## Publisher/Marketplace readiness
 
-Before Marketplace publish, replace package metadata:
+Before Marketplace publish, confirm package metadata:
 
-- `publisher` in `package.json` (currently placeholder)
+- `publisher` in `package.json` (`mnf-flandre`) is actually created/owned in Marketplace for the release account
 - versioning policy and release notes cadence
 - final branding/icon review
 
 Current package includes a marketplace icon and preview flag for hardened beta distribution.
+
+Recommended final release flow:
+
+1. Confirm Marketplace publisher ownership for `mnf-flandre`.
+2. Confirm final icon in `resources/marketplace-icon.png`.
+3. Run `npm run release:check`.
+4. Run `npm run release:package`.
 
 ## Troubleshooting
 
