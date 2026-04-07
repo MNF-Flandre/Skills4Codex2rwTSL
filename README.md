@@ -48,37 +48,6 @@
 
 ---
 
-## 🧩 VS Code Extension（推荐前端）
-
-当前推荐使用 `vscode-extension/` 作为 TSL 验证工作流前端，Python backend 仍是底层执行层：
-
-- 前端（VS Code extension）：命令、Sidebar、状态、Codex handoff
-- 后端（Python）：`python/tsl_validation/*` + `python/ide_bridge.py`
-
-扩展支持两种运行场景：
-
-- `repo_attached_mode`：仓库开发模式（自动探测 backend root）
-- `external_workspace_mode`：任意 workspace 模式（通过 `tslWorkbench.backend.root` 指定 backend）
-
-> 扩展层不重写 pyTSL 逻辑；仅做 VS Code 集成与交互。
-
-扩展当前已支持本地 release-hardening 流程：
-- `npm install`
-- `npm run compile`
-- `npm test`
-- `npm run package`（产出 `.vsix`）
-- `npm run release:check`（正式发布前门禁：publisher/icon/readiness）
-
-并在首次激活时给出配置/预检下一步引导（backend root / connection / preflight）。
-其中 `npm test` 已包含 Extension Host 集成测试（真实 VS Code 宿主层 smoke）。
-
-新增扩展诊断命令：`TSL: Run Diagnostic Wizard`，会检查 backend/python/connection/validation path/runtime hints 并给出下一步建议。
-
-扩展排障手册见：
-- `vscode-extension/TROUBLESHOOTING.md`
-
----
-
 ## 🧪 TSL Inline Validation Prototype（v0.1）
 
 新增一个可运行的纵向原型（vertical slice），目标是打通：
@@ -348,23 +317,23 @@ PYTHONPATH=python python -m tsl_validation.cli validate   examples/live_cases/li
 仍需本地补充：
 - 真实 pyTSL SDK 精确 connect/execute 签名与返回结构映射（文件内已显式 `TODO(integration point)`）
 
-## Live pyTSL local-network trial
+## Live pyTSL school-network trial
 
 Two connection modes are modeled:
 
 - `remote_api`
 - `local_client_bridge`
 
-For this repo, the validated institution-specific local bridge path is `local_client_bridge`.
+For this repo, the validated school-network path is `local_client_bridge`.
 
 ### Local setup
 
-1. Connect to your required internal network first.
+1. Connect to the campus network first.
 2. Copy `.env.example` to `.env.local`.
 3. Fill in or export:
    - `PYTSL_CONNECTION_MODE=local_client_bridge`
-   - `PYTSL_HOST=TODO_LOCAL_HOST`
-   - `PYTSL_PORT=TODO_LOCAL_PORT`
+   - `PYTSL_HOST=10.15.21.181`
+   - `PYTSL_PORT=443`
    - `PYTSL_USERNAME=...`
    - `PYTSL_PASSWORD=...`
 4. Keep real credentials out of git. `.env`, `.env.local`, and `config/*.local.env` are ignored.
@@ -385,8 +354,8 @@ The smoke template is wired for the validated local bridge path. The oracle temp
 
 ### Current machine status
 
-- Runtime SDK module is importable from local SDK path
-- TCP to `TODO_LOCAL_HOST:TODO_LOCAL_PORT` is reachable
+- `TSLPy312` is importable from `AnalyseNG.NET`
+- TCP to `10.15.21.181:443` is reachable
 - `local_client_bridge` smoke execution passes once credentials are supplied
 - live oracle remains partially blocked until a reference source is wired
 
