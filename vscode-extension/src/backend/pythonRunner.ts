@@ -1,30 +1,35 @@
 import { execFile } from 'node:child_process';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { AskFixPayload, LintPayload, PreflightPayload, ValidationMode, ValidationPayload } from '../types';
-
-const PASSWORD_SECRET_KEY = 'tslWorkbench.connection.password';
+import { ConfigurationService } from '../config/configurationService';
+import { PathResolver } from '../services/pathResolver';
+import { AskFixPayload, BackendSummary, ConnectionProfile, LintPayload, PreflightPayload, ValidationMode, ValidationPayload } from '../types';
+import { buildRunnerEnv, ensureFileExists, parseJsonPayload } from './runnerUtils';
 
 export class PythonBackendRunner {
   public constructor(
-    private readonly workspaceRoot: string,
     private readonly output: vscode.OutputChannel,
-    private readonly secretStorage: vscode.SecretStorage
+    private readonly configuration: ConfigurationService,
+    private readonly pathResolver: PathResolver
   ) {}
 
   public async lint(filePath: string): Promise<LintPayload> {
     return this.runCli<LintPayload>(['-m', 'tsl_validation.cli', 'lint', filePath]);
   }
 
-  public async preflight(casePath: string): Promise<PreflightPayload> {
-    return this.runCli<PreflightPayload>(['-m', 'tsl_validation.cli', 'preflight', '--case', casePath]);
+  public async preflight(casePath?: string): Promise<PreflightPayload> {
+    const smokeCase = casePath || this.pathResolver.resolveValidationCasePath('smoke', this.configuration.getValidationCasePath('smoke'));
+    return this.runCli<PreflightPayload>(['-m', 'tsl_validation.cli', 'preflight', '--case', smokeCase]);
+  }
+
+  public getPreflightCasePath(): string {
+    return this.pathResolver.resolveValidationCasePath('smoke', this.configuration.getValidationCasePath('smoke'));
   }
 
   public async validate(filePath: string, mode: ValidationMode): Promise<ValidationPayload> {
-    const casePath = this.resolvePath(this.getConfig(`validation.casePath${capitalize(mode)}`));
-    const taskPath = this.resolvePath(this.getConfig('validation.taskPath'));
-    const reportPath = this.resolvePath(this.getConfig('validation.reportPath'));
+    const casePath = this.pathResolver.resolveValidationCasePath(mode, this.configuration.getValidationCasePath(mode));
+    const taskPath = this.pathResolver.resolveValidationTaskPath(this.configuration.getValidationTaskPath());
+    const reportPath = this.pathResolver.resolveValidationReportPath(this.configuration.getValidationReportPath());
 
     return this.runCli<ValidationPayload>([
       '-m',
@@ -47,24 +52,43 @@ export class PythonBackendRunner {
   }
 
   public async askFix(filePath: string, reportPath: string): Promise<AskFixPayload> {
-    return this.runCli<AskFixPayload>(['python/ide_bridge.py', 'ask-fix', '--file', filePath, '--report', reportPath]);
+    const ideBridge = this.pathResolver.getIdeBridgePath();
+    return this.runCli<AskFixPayload>([ideBridge, 'ask-fix', '--file', filePath, '--report', reportPath]);
   }
 
   public async showDiff(reportPath: string): Promise<Record<string, unknown>> {
-    return this.runCli<Record<string, unknown>>(['python/ide_bridge.py', 'show-diff', '--report', reportPath]);
+    const ideBridge = this.pathResolver.getIdeBridgePath();
+    return this.runCli<Record<string, unknown>>([ideBridge, 'show-diff', '--report', reportPath]);
   }
 
   public getLastReportPath(): string {
-    return this.resolvePath(this.getConfig('validation.reportPath'));
+    return this.pathResolver.resolveValidationReportPath(this.configuration.getValidationReportPath());
+  }
+
+  public getBackendSummary(): BackendSummary {
+    return this.pathResolver.getBackendSummary();
+  }
+
+  public async getConnectionProfile(): Promise<ConnectionProfile> {
+    return this.configuration.getConnectionProfile();
+  }
+
+  public async clearStoredPassword(): Promise<void> {
+    await this.configuration.clearPassword();
+  }
+
+  public async resetConnectionConfiguration(): Promise<void> {
+    await this.configuration.resetConnectionSettings();
   }
 
   public async configureConnectionInteractive(): Promise<void> {
-    const cfg = vscode.workspace.getConfiguration('tslWorkbench');
+    const current = await this.configuration.getConnectionProfile();
 
     const host = await vscode.window.showInputBox({
       title: 'TSL Host',
-      prompt: 'Enter runtime host',
-      value: this.getConfig('connection.host'),
+      prompt: 'Runtime host (required)',
+      value: current.host,
+      validateInput: (value) => (value.trim() ? undefined : 'Host is required.'),
       ignoreFocusOut: true,
     });
     if (host === undefined) {
@@ -73,8 +97,15 @@ export class PythonBackendRunner {
 
     const portInput = await vscode.window.showInputBox({
       title: 'TSL Port',
-      prompt: 'Enter runtime port',
-      value: String(this.getConfig('connection.port')),
+      prompt: 'Runtime port (1-65535)',
+      value: current.port > 0 ? String(current.port) : '',
+      validateInput: (value) => {
+        const parsed = Number.parseInt(value, 10);
+        if (!Number.isFinite(parsed) || parsed < 1 || parsed > 65535) {
+          return 'Port must be an integer between 1 and 65535.';
+        }
+        return undefined;
+      },
       ignoreFocusOut: true,
     });
     if (portInput === undefined) {
@@ -83,27 +114,29 @@ export class PythonBackendRunner {
 
     const username = await vscode.window.showInputBox({
       title: 'TSL Username',
-      prompt: 'Enter runtime username',
-      value: this.getConfig('connection.username'),
+      prompt: 'Runtime username (optional)',
+      value: current.username,
       ignoreFocusOut: true,
     });
     if (username === undefined) {
       return;
     }
 
-    const mode = await vscode.window.showQuickPick(['local_client_bridge', 'remote_api'], {
-      title: 'Connection Mode',
-      ignoreFocusOut: true,
-      canPickMany: false,
-    });
+    const mode = await vscode.window.showQuickPick(
+      [
+        { label: 'local_client_bridge', detail: 'Use local Tinysoft client bridge installed on this machine.' },
+        { label: 'remote_api', detail: 'Connect to remote API endpoint with credentials.' },
+      ],
+      { title: 'Connection Mode', ignoreFocusOut: true, canPickMany: false }
+    );
     if (!mode) {
       return;
     }
 
     const sdkPath = await vscode.window.showInputBox({
-      title: 'Local SDK Path (Optional)',
-      prompt: 'Path for PYTSL_SDK_PATH',
-      value: this.getConfig('connection.sdkPath'),
+      title: 'Local SDK Path (optional)',
+      prompt: 'Used as PYTSL_SDK_PATH to help Python discover SDK modules',
+      value: current.sdkPath,
       ignoreFocusOut: true,
     });
     if (sdkPath === undefined) {
@@ -111,9 +144,9 @@ export class PythonBackendRunner {
     }
 
     const localClientPath = await vscode.window.showInputBox({
-      title: 'Local Client Path (Optional)',
-      prompt: 'Path for local client bridge',
-      value: this.getConfig('connection.localClientPath'),
+      title: 'Local Client Path (optional)',
+      prompt: 'Used as TSL_CLIENT_DIR for local_client_bridge mode',
+      value: current.localClientPath,
       ignoreFocusOut: true,
     });
     if (localClientPath === undefined) {
@@ -122,7 +155,7 @@ export class PythonBackendRunner {
 
     const password = await vscode.window.showInputBox({
       title: 'TSL Password',
-      prompt: 'Enter runtime password (stored in SecretStorage)',
+      prompt: 'Stored in VS Code SecretStorage. Leave empty to keep current password.',
       password: true,
       ignoreFocusOut: true,
     });
@@ -130,80 +163,57 @@ export class PythonBackendRunner {
       return;
     }
 
-    await Promise.all([
-      cfg.update('connection.host', host, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.port', Number.parseInt(portInput, 10) || 0, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.username', username, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.mode', mode, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.sdkPath', sdkPath, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.localClientPath', localClientPath, vscode.ConfigurationTarget.Workspace),
-      this.secretStorage.store(PASSWORD_SECRET_KEY, password),
-    ]);
+    await this.configuration.updateConnectionProfile({
+      host: host.trim(),
+      port: Number.parseInt(portInput, 10),
+      username: username.trim(),
+      mode: mode.label as ConnectionProfile['mode'],
+      sdkPath: sdkPath.trim(),
+      localClientPath: localClientPath.trim(),
+    });
+    if (password.trim()) {
+      await this.configuration.setPassword(password.trim());
+    }
 
-    const runNow = await vscode.window.showQuickPick(['Yes', 'No'], {
-      title: 'Run preflight now?',
+    const runNow = await vscode.window.showQuickPick(['Run Preflight', 'Skip'], {
+      title: 'Connection saved. Run preflight now?',
       ignoreFocusOut: true,
     });
-    if (runNow === 'Yes') {
-      const casePath = this.resolvePath(this.getConfig('validation.casePathSmoke'));
-      await this.preflight(casePath);
+    if (runNow === 'Run Preflight') {
+      await this.preflight();
     }
   }
 
   public async getConnectionSummary(): Promise<string> {
-    const host = this.getConfig('connection.host');
-    const port = this.getConfig('connection.port');
-    const mode = this.getConfig('connection.mode');
-    const user = this.getConfig('connection.username');
-    const hasPassword = Boolean(await this.secretStorage.get(PASSWORD_SECRET_KEY));
-    const auth = user && hasPassword ? `${user}/secret` : 'incomplete';
-    return `${mode} ${host}:${port} (${auth})`;
+    const profile = await this.configuration.getConnectionProfile();
+    const hostPort = profile.host && profile.port > 0 ? `${profile.host}:${profile.port}` : 'not configured';
+    const userState = profile.username ? 'user:set' : 'user:missing';
+    const pwdState = profile.hasPassword ? 'password:saved' : 'password:missing';
+    return `${profile.mode} ${hostPort} (${userState}, ${pwdState})`;
   }
 
-  private getConfig(key: string): string {
-    return String(vscode.workspace.getConfiguration('tslWorkbench').get(key, ''));
-  }
-
-  private resolvePath(configPath: string): string {
-    if (!configPath) {
-      return this.workspaceRoot;
+  public async getConnectionHint(): Promise<string> {
+    const profile = await this.configuration.getConnectionProfile();
+    if (!profile.host || profile.port <= 0) {
+      return 'not_configured';
     }
-    return path.isAbsolute(configPath) ? configPath : path.join(this.workspaceRoot, configPath);
+    if (!profile.hasPassword) {
+      return 'blocked';
+    }
+    return 'ready';
   }
 
   private async buildEnv(): Promise<NodeJS.ProcessEnv> {
-    const password = (await this.secretStorage.get(PASSWORD_SECRET_KEY)) ?? '';
-    const host = this.getConfig('connection.host');
-    const port = this.getConfig('connection.port');
-    const username = this.getConfig('connection.username');
-    const mode = this.getConfig('connection.mode');
-    const sdkPath = this.getConfig('connection.sdkPath');
-    const localClientPath = this.getConfig('connection.localClientPath');
-
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      PYTHONPATH: path.join(this.workspaceRoot, 'python'),
-      PYTHONUTF8: '1',
-      PYTHONIOENCODING: 'utf-8',
-      PYTSL_CONNECTION_MODE: mode,
-      PYTSL_HOST: host,
-      PYTSL_PORT: String(port),
-      PYTSL_USERNAME: username,
-      PYTSL_PASSWORD: password,
-    };
-
-    if (sdkPath) {
-      env.PYTSL_SDK_PATH = sdkPath;
-    }
-    if (localClientPath) {
-      env.TSL_CLIENT_DIR = localClientPath;
-    }
-    return env;
+    const profile = await this.configuration.getConnectionProfile();
+    const password = await this.configuration.getPassword();
+    return buildRunnerEnv(process.env, profile, password, this.pathResolver.getPythonModuleRoot());
   }
 
   private async runCli<T>(args: string[]): Promise<T> {
-    const pythonPath = this.getConfig('pythonPath') || 'python';
+    const pythonPath = this.configuration.getPythonPath() || 'python';
     const env = await this.buildEnv();
+    const backendRoot = this.pathResolver.getBackendRoot();
+    ensureFileExists(path.join(backendRoot, 'python', 'ide_bridge.py'));
 
     this.output.appendLine(`$ ${pythonPath} ${args.join(' ')}`);
 
@@ -212,7 +222,7 @@ export class PythonBackendRunner {
         pythonPath,
         args,
         {
-          cwd: this.workspaceRoot,
+          cwd: backendRoot,
           env,
           timeout: 120000,
           maxBuffer: 10 * 1024 * 1024,
@@ -230,39 +240,10 @@ export class PythonBackendRunner {
     if (result.stderr.trim()) {
       this.output.appendLine(result.stderr.trim());
     }
-    this.output.appendLine(result.stdout.trim());
-
-    const payload = parseJsonPayload<T>(result.stdout);
-    return payload;
-  }
-}
-
-function parseJsonPayload<T>(text: string): T {
-  const trimmed = text.trim();
-  if (!trimmed) {
-    throw new Error('Backend returned empty output.');
-  }
-  try {
-    return JSON.parse(trimmed) as T;
-  } catch {
-    const start = trimmed.indexOf('{');
-    const end = trimmed.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return JSON.parse(trimmed.slice(start, end + 1)) as T;
+    if (result.stdout.trim()) {
+      this.output.appendLine(result.stdout.trim());
     }
-    throw new Error('Failed to parse backend JSON payload.');
-  }
-}
 
-function capitalize(text: string): string {
-  if (!text) {
-    return text;
-  }
-  return text[0].toUpperCase() + text.slice(1);
-}
-
-export function ensureFileExists(filePath: string): void {
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`File not found: ${filePath}`);
+    return parseJsonPayload<T>(result.stdout);
   }
 }

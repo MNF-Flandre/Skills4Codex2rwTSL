@@ -48,6 +48,22 @@
 
 ---
 
+## 🧩 VS Code Extension（推荐前端）
+
+当前推荐使用 `vscode-extension/` 作为 TSL 验证工作流前端，Python backend 仍是底层执行层：
+
+- 前端（VS Code extension）：命令、Sidebar、状态、Codex handoff
+- 后端（Python）：`python/tsl_validation/*` + `python/ide_bridge.py`
+
+扩展支持两种运行场景：
+
+- `repo_attached_mode`：仓库开发模式（自动探测 backend root）
+- `external_workspace_mode`：任意 workspace 模式（通过 `tslWorkbench.backend.root` 指定 backend）
+
+> 扩展层不重写 pyTSL 逻辑；仅做 VS Code 集成与交互。
+
+---
+
 ## 🧪 TSL Inline Validation Prototype（v0.1）
 
 新增一个可运行的纵向原型（vertical slice），目标是打通：

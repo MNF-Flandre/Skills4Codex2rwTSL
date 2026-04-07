@@ -2,5 +2,7 @@
 .vscode-test/**
 src/**
 tsconfig.json
+out/test/**
 **/*.map
 node_modules/.cache/**
+README.dev.md
