@@ -69,6 +69,12 @@
 - `npm run package`（产出 `.vsix`）
 
 并在首次激活时给出配置/预检下一步引导（backend root / connection / preflight）。
+其中 `npm test` 已包含 Extension Host 集成测试（真实 VS Code 宿主层 smoke）。
+
+新增扩展诊断命令：`TSL: Run Diagnostic Wizard`，会检查 backend/python/connection/validation path/runtime hints 并给出下一步建议。
+
+扩展排障手册见：
+- `vscode-extension/TROUBLESHOOTING.md`
 
 ---
 
