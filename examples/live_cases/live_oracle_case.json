@@ -12,7 +12,7 @@
     "runtime_case": {
       "connection_mode": "local_client_bridge",
       "network_required": false,
-      "host": "TODO_LOCAL_HOST",
+      "host": "10.15.21.181",
       "port": 443,
       "username": "",
       "password": "",
@@ -28,27 +28,11 @@
       "extra_system_params": "",
       "connection_label": "local_client_bridge",
       "note": "live smoke is ready; live oracle remains partially blocked until a real reference source and return schema are wired",
-      "output_fields": [
-        "signal",
-        "value",
-        "series_tail",
-        "window"
-      ]
+      "output_fields": ["signal", "value", "series_tail", "window"]
     },
-    "output_fields": [
-      "signal",
-      "value",
-      "series_tail",
-      "window"
-    ],
-    "compare_fields": [
-      "signal",
-      "value"
-    ],
-    "required_fields": [
-      "signal",
-      "value"
-    ],
+    "output_fields": ["signal", "value", "series_tail", "window"],
+    "compare_fields": ["signal", "value"],
+    "required_fields": ["signal", "value"],
     "field_types": {
       "signal": "number",
       "value": "number"

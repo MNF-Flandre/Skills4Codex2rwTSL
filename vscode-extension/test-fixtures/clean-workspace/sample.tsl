@@ -1,3 +1,0 @@
-A:=MA(CLOSE,5);
-B:=REF(A,1);
-SIGNAL:=A>B;
