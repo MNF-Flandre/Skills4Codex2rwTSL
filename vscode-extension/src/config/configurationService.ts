@@ -56,7 +56,7 @@ export class ConfigurationService {
     const hasPassword = Boolean(await this.secretStorage.get(PASSWORD_SECRET_KEY));
     return {
       host: this.getString('connection.host', ''),
-      port: this.getNumber('connection.port', 0),
+      port: this.getNumber('connection.port', 443),
       username: this.getString('connection.username', ''),
       mode: this.getConnectionMode(),
       sdkPath: this.getString('connection.sdkPath', ''),
