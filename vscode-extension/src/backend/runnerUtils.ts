@@ -1,6 +1,12 @@
 import * as fs from 'node:fs';
 import { ConnectionProfile, ValidationAdapter, ValidationMode } from '../types';
 
+export interface RunnerExecOptions {
+  cwd: string;
+  timeout: number;
+  maxBuffer: number;
+}
+
 export function parseJsonPayload<T>(text: string): T {
   const trimmed = text.trim();
   if (!trimmed) {
@@ -76,4 +82,20 @@ export function buildValidateArgs(
     '--report',
     reportPath,
   ];
+}
+
+export function buildRunnerExecOptions(backendRoot: string): RunnerExecOptions {
+  return {
+    cwd: backendRoot,
+    timeout: 120000,
+    maxBuffer: 10 * 1024 * 1024,
+  };
+}
+
+export function formatRunnerExecError(errorMessage: string, stderr: string, stdout: string): string {
+  const detail = (stderr || stdout || '').trim();
+  if (!detail) {
+    return errorMessage;
+  }
+  return `${errorMessage}\n${detail}`;
 }

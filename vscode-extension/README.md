@@ -81,6 +81,8 @@ Validation adapter setting:
 4. Open a `.tsl` file and run `TSL: Run Smoke on Current File`.
 5. If needed, run `TSL: Ask Codex to Fix Current File`.
 
+On first activation, the extension now gives an in-product next-step prompt (configure connection / run preflight / open settings) based on detected readiness.
+
 ## Codex handoff workflow
 
 Supported scenes:
@@ -106,3 +108,4 @@ Prompt style:
 - This extension still depends on a valid Python backend project root.
 - It is validation-driven (not a full LSP implementation).
 - `publisher` is placeholder (`todo-publisher`); replace before Marketplace release.
+- Live `pytsl` execution still depends on local SDK/runtime/account environment; use adapter `auto`/`mock` for non-live setups.

@@ -3,6 +3,12 @@ import * as vscode from 'vscode';
 import { PythonBackendRunner } from '../backend/pythonRunner';
 import { ensureFileExists } from '../backend/runnerUtils';
 import { ExtensionRuntimeState, LintDiagnostic, ValidationMode } from '../types';
+import {
+  suggestPreflightNextAction,
+  suggestValidationNextAction,
+  summarizePreflightFailure,
+  summarizeValidationFailure,
+} from './validationFeedback';
 
 export async function runLintCurrentFile(
   runner: PythonBackendRunner,
@@ -48,17 +54,9 @@ export async function runPreflight(
   if (payload.status === 'pass') {
     vscode.window.showInformationMessage('TSL preflight passed.');
   } else {
-    const blocked = [
-      payload.package_ready ? '' : 'package',
-      payload.config_ready ? '' : 'config',
-      payload.case_ready ? '' : 'case',
-      payload.network_ready ? '' : 'network',
-      payload.sdk_ready ? '' : 'sdk',
-    ]
-      .filter(Boolean)
-      .join(', ');
-    const reason = blocked ? `blocked by: ${blocked}` : 'see output for details';
-    vscode.window.showWarningMessage(`TSL preflight failed (${reason}).`);
+    const reason = summarizePreflightFailure(payload);
+    const nextAction = suggestPreflightNextAction(payload);
+    vscode.window.showWarningMessage(`TSL preflight failed: ${reason}. Next: ${nextAction}`);
   }
 }
 
@@ -91,8 +89,9 @@ export async function runValidationMode(
   if (payload.status === 'pass') {
     vscode.window.showInformationMessage(msg);
   } else {
-    const summary = payload.result?.diff_report?.summary ? ` | ${payload.result.diff_report.summary}` : '';
-    vscode.window.showWarningMessage(`${msg}${summary}`);
+    const detail = summarizeValidationFailure(mode, payload);
+    const nextAction = suggestValidationNextAction(payload);
+    vscode.window.showWarningMessage(`${detail}. Next: ${nextAction}`);
   }
 }
 
@@ -101,7 +100,7 @@ export async function openLastReport(state: ExtensionRuntimeState): Promise<void
     throw new Error('No report has been generated yet.');
   }
   if (!fs.existsSync(state.lastReportPath)) {
-    throw new Error(`Last report file not found: ${state.lastReportPath}`);
+    throw new Error(`Last report file not found: ${state.lastReportPath}. Check tslWorkbench.validation.reportPath and rerun validation.`);
   }
   const doc = await vscode.workspace.openTextDocument(state.lastReportPath);
   await vscode.window.showTextDocument(doc, { preview: false });

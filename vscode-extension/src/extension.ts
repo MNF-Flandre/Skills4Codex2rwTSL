@@ -8,6 +8,7 @@ import {
   askCodexHandOffSelection,
 } from './commands/codexHandoff';
 import { openLastReport, runLintCurrentFile, runPreflight, runValidationMode } from './commands/runValidation';
+import { buildStartupGuidance } from './onboarding/startupGuidance';
 import { PathResolver } from './services/pathResolver';
 import { ExtensionRuntimeState } from './types';
 import { TslWorkbenchProvider } from './views/tslWorkbenchProvider';
@@ -29,7 +30,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    vscode.window.showWarningMessage(`TSL Workbench backend discovery failed: ${message}`);
+    const action = await vscode.window.showWarningMessage(
+      `TSL Workbench backend discovery failed: ${message}`,
+      'Open Settings'
+    );
+    if (action === 'Open Settings') {
+      await vscode.commands.executeCommand('workbench.action.openSettings', 'tslWorkbench.backend.root');
+    }
     return;
   }
 
@@ -47,10 +54,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   const runner = new PythonBackendRunner(output, configuration, pathResolver);
+  const profile = await runner.getConnectionProfile();
   state.connectionSummary = await runner.getConnectionSummary();
   const hint = await runner.getConnectionHint();
-  state.statusBarSummary =
-    hint === 'ready' ? '$(check) TSL Ready' : hint === 'blocked' ? '$(warning) TSL Config incomplete' : '$(circle-slash) TSL Not configured';
+  const startup = buildStartupGuidance({
+    hasWorkspace: Boolean(workspaceRoot),
+    connectionHint: hint === 'ready' ? 'ready' : hint === 'blocked' ? 'blocked' : 'not_configured',
+    hasPassword: profile.hasPassword,
+    host: profile.host,
+    port: profile.port,
+  });
+  state.statusBarSummary = startup.statusBarSummary;
 
   const provider = new TslWorkbenchProvider(state);
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -151,6 +165,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   output.appendLine('TSL Workbench activated.');
+  void showStartupGuidanceOnce(context, startup.message, startup.actions);
 }
 
 export function deactivate(): void {}
@@ -177,6 +192,26 @@ function registerSafeCommand(
       }
     }
   });
+}
+
+async function showStartupGuidanceOnce(
+  context: vscode.ExtensionContext,
+  message: string,
+  actions: Array<'Configure Connection' | 'Run Preflight' | 'Open Settings'>
+): Promise<void> {
+  const key = 'tslWorkbench.startupGuidance.v1';
+  if (context.workspaceState.get<boolean>(key)) {
+    return;
+  }
+  const action = await vscode.window.showInformationMessage(message, ...actions);
+  if (action === 'Configure Connection') {
+    await vscode.commands.executeCommand('tslWorkbench.configureConnection');
+  } else if (action === 'Run Preflight') {
+    await vscode.commands.executeCommand('tslWorkbench.runPreflight');
+  } else if (action === 'Open Settings') {
+    await vscode.commands.executeCommand('workbench.action.openSettings', 'tslWorkbench');
+  }
+  await context.workspaceState.update(key, true);
 }
 
 class TslCodeLensProvider implements vscode.CodeLensProvider {
