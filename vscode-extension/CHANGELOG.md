@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3
+
+- Set extension publisher to `mnf-flandre` (requires Marketplace ownership verification at release time).
+- Added formal release readiness gate script: `npm run release:check`.
+- Added release packaging pipeline command: `npm run release:package`.
+- Added explicit final-release checklist in extension README (publisher/icon/check/package).
+
 ## 0.2.2
 
 - Added real Extension Host integration test lane using `@vscode/test-electron` and wired it into `npm test`.
