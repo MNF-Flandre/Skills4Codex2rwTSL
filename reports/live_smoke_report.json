@@ -14,7 +14,7 @@
       "runtime_case": {
         "connection_mode": "local_client_bridge",
         "network_required": false,
-        "host": "TODO_TSL_HOST",
+        "host": "TODO_LOCAL_HOST",
         "port": 443,
         "username": "",
         "password": "",
@@ -221,7 +221,7 @@
                 {
                   "name": "TSLPy314",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy314.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy314.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy314: 找不到指定的模块。"
@@ -229,7 +229,7 @@
                 {
                   "name": "TSLPy313",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy313.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy313.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy313: 找不到指定的模块。"
@@ -237,10 +237,10 @@
                 {
                   "name": "TSLPy312",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy312.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy312.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": true,
-                  "module_file": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy312.pyd",
+                  "module_file": "TODO_LOCAL_SDK_PATH\\TSLPy312.pyd",
                   "entrypoints": {
                     "connect": [
                       "ConnectServer",
@@ -275,7 +275,7 @@
                 {
                   "name": "TSLPy311",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy311.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy311.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy311: 找不到指定的模块。"
@@ -283,7 +283,7 @@
                 {
                   "name": "TSLPy310",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy310.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy310.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy310: 找不到指定的模块。"
@@ -291,7 +291,7 @@
                 {
                   "name": "TSLPy39",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy39.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy39.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy39: 找不到指定的模块。"
@@ -299,7 +299,7 @@
                 {
                   "name": "TSLPy38",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy38.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy38.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy38: 找不到指定的模块。"
@@ -307,7 +307,7 @@
                 {
                   "name": "TSLPy37",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy37.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy37.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy37: 找不到指定的模块。"
@@ -315,7 +315,7 @@
                 {
                   "name": "TSLPy36",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy36.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy36.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy36: 找不到指定的模块。"
@@ -323,7 +323,7 @@
                 {
                   "name": "TSLPy35",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy35.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy35.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy35: 找不到指定的模块。"
@@ -331,7 +331,7 @@
                 {
                   "name": "TSLPy34",
                   "found": true,
-                  "origin": "LOCAL_WORKSPACE\\AnalyseNG.NET\\TSLPy34.pyd",
+                  "origin": "TODO_LOCAL_SDK_PATH\\TSLPy34.pyd",
                   "loader": "ExtensionFileLoader",
                   "import_ok": false,
                   "import_error": "ImportError: DLL load failed while importing TSLPy34: 找不到指定的模块。"
@@ -373,15 +373,15 @@
                 "TSLPy312"
               ],
               "candidate_paths": [
-                "LOCAL_WORKSPACE\\AnalyseNG.NET",
-                "LOCAL_WORKSPACE\\external\\Skills4Codex2rwTSL",
-                "LOCAL_WORKSPACE\\external\\Skills4Codex2rwTSL\\python"
+                "TODO_LOCAL_SDK_PATH",
+                "TODO_LOCAL_PROJECT_PATH",
+                "TODO_LOCAL_PROJECT_PATH\python"
               ]
             },
             "error": ""
           },
           "runtime_config": {
-            "host": "TODO_TSL_HOST",
+            "host": "TODO_LOCAL_HOST",
             "port": 443,
             "username": "",
             "password": "",
@@ -423,7 +423,7 @@
             "missing_live_fields": []
           },
           "network_probe": {
-            "host": "TODO_TSL_HOST",
+            "host": "TODO_LOCAL_HOST",
             "port": 443,
             "tcp_port_open": true,
             "network_reachable": true,
@@ -561,7 +561,7 @@
         "runtime_case": {
           "connection_mode": "local_client_bridge",
           "network_required": false,
-          "host": "TODO_TSL_HOST",
+          "host": "TODO_LOCAL_HOST",
           "port": 443,
           "username": "",
           "password": "",
