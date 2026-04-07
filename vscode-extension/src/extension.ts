@@ -8,7 +8,13 @@ import {
   askCodexHandOffSelection,
 } from './commands/codexHandoff';
 import { openLastReport, runLintCurrentFile, runPreflight, runValidationMode } from './commands/runValidation';
-import { buildStartupGuidance } from './onboarding/startupGuidance';
+import {
+  buildStartupGuidance,
+  STARTUP_ACTION_CONFIGURE_CONNECTION,
+  STARTUP_ACTION_OPEN_SETTINGS,
+  STARTUP_ACTION_RUN_PREFLIGHT,
+  StartupAction,
+} from './onboarding/startupGuidance';
 import { PathResolver } from './services/pathResolver';
 import { ExtensionRuntimeState } from './types';
 import { TslWorkbenchProvider } from './views/tslWorkbenchProvider';
@@ -197,18 +203,18 @@ function registerSafeCommand(
 async function showStartupGuidanceOnce(
   context: vscode.ExtensionContext,
   message: string,
-  actions: Array<'Configure Connection' | 'Run Preflight' | 'Open Settings'>
+  actions: StartupAction[]
 ): Promise<void> {
   const key = 'tslWorkbench.startupGuidance.v1';
   if (context.workspaceState.get<boolean>(key)) {
     return;
   }
   const action = await vscode.window.showInformationMessage(message, ...actions);
-  if (action === 'Configure Connection') {
+  if (action === STARTUP_ACTION_CONFIGURE_CONNECTION) {
     await vscode.commands.executeCommand('tslWorkbench.configureConnection');
-  } else if (action === 'Run Preflight') {
+  } else if (action === STARTUP_ACTION_RUN_PREFLIGHT) {
     await vscode.commands.executeCommand('tslWorkbench.runPreflight');
-  } else if (action === 'Open Settings') {
+  } else if (action === STARTUP_ACTION_OPEN_SETTINGS) {
     await vscode.commands.executeCommand('workbench.action.openSettings', 'tslWorkbench');
   }
   await context.workspaceState.update(key, true);
