@@ -17,8 +17,9 @@ test('getWorkbenchRows returns readable status rows', () => {
     statusBarSummary: '$(error) TSL oracle Failed',
   };
   const rows = getWorkbenchRows(state);
-  assert.equal(rows.length, 7);
+  assert.equal(rows.length, 8);
   assert.equal(rows[0].label, 'Status');
   assert.equal(rows[1].label, 'Connection');
   assert.match(rows[4].description, /oracle fail \(oracle_mismatch\)/);
+  assert.equal(rows[6].label, 'Diagnostics');
 });

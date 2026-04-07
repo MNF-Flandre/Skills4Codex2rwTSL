@@ -63,6 +63,14 @@ export function getWorkbenchRows(state: ExtensionRuntimeState): WorkbenchRow[] {
       icon: 'file-text',
     },
     {
+      label: 'Diagnostics',
+      description: 'Run environment diagnostics',
+      tooltip: 'Run Diagnostic Wizard and generate detailed environment checks',
+      command: 'tslWorkbench.runDiagnosticWizard',
+      title: 'Run Diagnostic Wizard',
+      icon: 'tools',
+    },
+    {
       label: 'Codex Handoff',
       description: state.codexHandoffStatus,
       tooltip: `Codex handoff: ${state.codexHandoffStatus}`,

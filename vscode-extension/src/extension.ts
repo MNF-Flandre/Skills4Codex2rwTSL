@@ -7,6 +7,7 @@ import {
   askCodexFixCurrentFile,
   askCodexHandOffSelection,
 } from './commands/codexHandoff';
+import { runDiagnosticWizard } from './commands/diagnosticWizard';
 import { openLastReport, runLintCurrentFile, runPreflight, runValidationMode } from './commands/runValidation';
 import {
   buildStartupGuidance,
@@ -164,6 +165,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         `Report path: ${runner.getLastReportPath()}`,
       ].join('\n');
       vscode.window.showInformationMessage(summary, { modal: false });
+    }),
+    registerSafeCommand('tslWorkbench.runDiagnosticWizard', output, async () => {
+      await runDiagnosticWizard(runner, configuration, pathResolver, state, output);
+      state.statusBarSummary = state.statusBarSummary.includes('Failed')
+        ? state.statusBarSummary
+        : '$(tools) TSL Diagnostics Updated';
+      refreshUi();
     }),
     registerSafeCommand('tslWorkbench.refreshSidebar', output, async () => {
       refreshUi();

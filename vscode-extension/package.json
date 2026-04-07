@@ -4,6 +4,12 @@
   "description": "TSL development workbench for VS Code with Python validation backend and Codex-friendly handoff.",
   "version": "0.1.0",
   "publisher": "todo-publisher",
+  "preview": true,
+  "icon": "resources/marketplace-icon.png",
+  "galleryBanner": {
+    "color": "#1f2937",
+    "theme": "dark"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -45,6 +51,7 @@
     "onCommand:tslWorkbench.clearStoredPassword",
     "onCommand:tslWorkbench.resetConnection",
     "onCommand:tslWorkbench.revealConnectionSummary",
+    "onCommand:tslWorkbench.runDiagnosticWizard",
     "onCommand:tslWorkbench.refreshSidebar"
   ],
   "main": "./out/extension.js",
@@ -109,6 +116,10 @@
       {
         "command": "tslWorkbench.revealConnectionSummary",
         "title": "TSL: Reveal Current Connection Summary"
+      },
+      {
+        "command": "tslWorkbench.runDiagnosticWizard",
+        "title": "TSL: Run Diagnostic Wizard"
       }
     ],
     "viewsContainers": {
@@ -314,6 +325,11 @@
           "when": "view == tslWorkbench.sidebar",
           "command": "tslWorkbench.revealConnectionSummary",
           "group": "navigation"
+        },
+        {
+          "when": "view == tslWorkbench.sidebar",
+          "command": "tslWorkbench.runDiagnosticWizard",
+          "group": "navigation"
         }
       ]
     },
@@ -334,7 +350,9 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "node --test out/test/**/*.test.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node --test out/test/**/*.test.js",
+    "test:integration": "node ./scripts/runExtensionHostTests.js",
     "clean": "rm -rf out *.vsix",
     "package": "vsce package",
     "vscode:prepublish": "npm run compile",
@@ -343,6 +361,7 @@
   "devDependencies": {
     "@types/node": "^20.17.32",
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
     "typescript": "^5.8.3"
   }
