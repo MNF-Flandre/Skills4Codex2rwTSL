@@ -15,6 +15,14 @@ export function getWorkbenchRows(state: ExtensionRuntimeState): WorkbenchRow[] {
 
   return [
     {
+      label: 'Status',
+      description: state.statusBarSummary,
+      tooltip: `Runtime summary: ${state.statusBarSummary}`,
+      command: 'tslWorkbench.refreshSidebar',
+      title: 'Refresh Status',
+      icon: state.statusBarSummary.includes('Failed') ? 'error' : state.statusBarSummary.includes('Ready') ? 'check' : 'circle-large-outline',
+    },
+    {
       label: 'Connection',
       description: state.connectionSummary,
       tooltip: `Connection: ${state.connectionSummary}`,
@@ -64,4 +72,3 @@ export function getWorkbenchRows(state: ExtensionRuntimeState): WorkbenchRow[] {
     },
   ];
 }
-

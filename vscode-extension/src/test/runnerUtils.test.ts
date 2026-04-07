@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRunnerEnv, parseJsonPayload } from '../backend/runnerUtils';
+import { buildRunnerEnv, buildValidateArgs, parseJsonPayload } from '../backend/runnerUtils';
 import { ConnectionProfile } from '../types';
 
 test('parseJsonPayload parses plain JSON and fallback JSON blocks', () => {
@@ -30,3 +30,24 @@ test('buildRunnerEnv injects connection and optional paths', () => {
   assert.equal(env.TSL_CLIENT_DIR, '/client');
 });
 
+test('buildValidateArgs assembles mode/adapter/case/task/report correctly', () => {
+  const args = buildValidateArgs('/w/file.tsl', 'oracle', 'auto', '/b/case.json', '/b/task.json', '/w/report.md');
+  assert.deepEqual(args, [
+    '-m',
+    'tsl_validation.cli',
+    'validate',
+    '/w/file.tsl',
+    '--case',
+    '/b/case.json',
+    '--task',
+    '/b/task.json',
+    '--adapter',
+    'auto',
+    '--mode',
+    'oracle',
+    '--lint-policy',
+    'warn',
+    '--report',
+    '/w/report.md',
+  ]);
+});

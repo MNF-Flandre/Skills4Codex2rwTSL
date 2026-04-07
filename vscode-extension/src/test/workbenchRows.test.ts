@@ -14,11 +14,11 @@ test('getWorkbenchRows returns readable status rows', () => {
     lastReportPath: '/workspace/reports/vscode_last_report.md',
     lastFilePath: '/workspace/test.tsl',
     codexHandoffStatus: 'fix ready (full/both)',
-    statusBarSummary: 'TSL: Validation failed',
+    statusBarSummary: '$(error) TSL oracle Failed',
   };
   const rows = getWorkbenchRows(state);
-  assert.equal(rows.length, 6);
-  assert.equal(rows[0].label, 'Connection');
-  assert.match(rows[3].description, /oracle fail \(oracle_mismatch\)/);
+  assert.equal(rows.length, 7);
+  assert.equal(rows[0].label, 'Status');
+  assert.equal(rows[1].label, 'Connection');
+  assert.match(rows[4].description, /oracle fail \(oracle_mismatch\)/);
 });
-

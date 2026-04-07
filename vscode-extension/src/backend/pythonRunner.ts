@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { ConfigurationService } from '../config/configurationService';
 import { PathResolver } from '../services/pathResolver';
 import { AskFixPayload, BackendSummary, ConnectionProfile, LintPayload, PreflightPayload, ValidationMode, ValidationPayload } from '../types';
-import { buildRunnerEnv, ensureFileExists, parseJsonPayload } from './runnerUtils';
+import { buildRunnerEnv, buildValidateArgs, ensureFileExists, parseJsonPayload } from './runnerUtils';
 
 export class PythonBackendRunner {
   public constructor(
@@ -30,25 +30,9 @@ export class PythonBackendRunner {
     const casePath = this.pathResolver.resolveValidationCasePath(mode, this.configuration.getValidationCasePath(mode));
     const taskPath = this.pathResolver.resolveValidationTaskPath(this.configuration.getValidationTaskPath());
     const reportPath = this.pathResolver.resolveValidationReportPath(this.configuration.getValidationReportPath());
+    const adapter = this.configuration.getValidationAdapter();
 
-    return this.runCli<ValidationPayload>([
-      '-m',
-      'tsl_validation.cli',
-      'validate',
-      filePath,
-      '--case',
-      casePath,
-      '--task',
-      taskPath,
-      '--adapter',
-      'pytsl',
-      '--mode',
-      mode,
-      '--lint-policy',
-      'warn',
-      '--report',
-      reportPath,
-    ]);
+    return this.runCli<ValidationPayload>(buildValidateArgs(filePath, mode, adapter, casePath, taskPath, reportPath));
   }
 
   public async askFix(filePath: string, reportPath: string): Promise<AskFixPayload> {
@@ -83,6 +67,7 @@ export class PythonBackendRunner {
 
   public async configureConnectionInteractive(): Promise<void> {
     const current = await this.configuration.getConnectionProfile();
+    const backend = this.pathResolver.getBackendSummary();
 
     const host = await vscode.window.showInputBox({
       title: 'TSL Host',
@@ -175,6 +160,22 @@ export class PythonBackendRunner {
       await this.configuration.setPassword(password.trim());
     }
 
+    const backendRoot = await vscode.window.showInputBox({
+      title: 'Backend Root (optional)',
+      prompt: `Current backend root: ${backend.backendRoot}. Leave empty to keep current value.`,
+      value: this.configuration.getBackendRoot(),
+      ignoreFocusOut: true,
+    });
+    if (backendRoot === undefined) {
+      return;
+    }
+    if (backendRoot.trim() !== this.configuration.getBackendRoot()) {
+      await this.configuration.updateBackendRoot(backendRoot.trim());
+      vscode.window.showInformationMessage(
+        'Backend root setting updated. Reload window or run "Developer: Reload Window" if backend path changed significantly.'
+      );
+    }
+
     const runNow = await vscode.window.showQuickPick(['Run Preflight', 'Skip'], {
       title: 'Connection saved. Run preflight now?',
       ignoreFocusOut: true,
@@ -188,7 +189,7 @@ export class PythonBackendRunner {
     const profile = await this.configuration.getConnectionProfile();
     const hostPort = profile.host && profile.port > 0 ? `${profile.host}:${profile.port}` : 'not configured';
     const userState = profile.username ? 'user:set' : 'user:missing';
-    const pwdState = profile.hasPassword ? 'password:saved' : 'password:missing';
+    const pwdState = profile.hasPassword ? 'password:yes' : 'password:no';
     return `${profile.mode} ${hostPort} (${userState}, ${pwdState})`;
   }
 

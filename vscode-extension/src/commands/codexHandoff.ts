@@ -10,33 +10,37 @@ type OutputMode = 'clipboard' | 'newDocument' | 'both' | 'workspaceTempFile';
 export async function askCodexFixCurrentFile(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  targetUri?: vscode.Uri
 ): Promise<void> {
-  await handoffFromFileOrSelection('fix', runner, state, output);
+  await handoffFromFileOrSelection('fix', runner, state, output, false, targetUri);
 }
 
 export async function askCodexExplainCurrentError(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  targetUri?: vscode.Uri
 ): Promise<void> {
-  await handoffFromFileOrSelection('explain', runner, state, output);
+  await handoffFromFileOrSelection('explain', runner, state, output, false, targetUri);
 }
 
 export async function askCodexContinueFromReport(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  targetUri?: vscode.Uri
 ): Promise<void> {
-  await handoffFromFileOrSelection('continue', runner, state, output);
+  await handoffFromFileOrSelection('continue', runner, state, output, false, targetUri);
 }
 
 export async function askCodexHandOffSelection(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  targetUri?: vscode.Uri
 ): Promise<void> {
-  await handoffFromFileOrSelection('fix', runner, state, output, true);
+  await handoffFromFileOrSelection('fix', runner, state, output, true, targetUri);
 }
 
 async function handoffFromFileOrSelection(
@@ -44,9 +48,10 @@ async function handoffFromFileOrSelection(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
-  forceSelection = false
+  forceSelection = false,
+  targetUri?: vscode.Uri
 ): Promise<void> {
-  const filePath = getCurrentTslFilePath() ?? state.lastFilePath;
+  const filePath = getCurrentTslFilePath(targetUri) ?? state.lastFilePath;
   if (!filePath) {
     throw new Error('No TSL file selected for Codex handoff.');
   }
@@ -55,8 +60,8 @@ async function handoffFromFileOrSelection(
     throw new Error(`Report not found: ${reportPath}`);
   }
 
-  const payload = await runner.askFix(filePath, reportPath);
-  const repair = payload.repair_payload ?? {};
+  const hasReport = fs.existsSync(reportPath);
+  const repair = hasReport ? (await runner.askFix(filePath, reportPath)).repair_payload ?? {} : buildFallbackRepairPayload(filePath, mode);
   const selectedSource = getCurrentSelectionSource();
   const source = forceSelection && !selectedSource ? '' : selectedSource || String(repair.source ?? '');
   if (forceSelection && !source) {
@@ -70,11 +75,34 @@ async function handoffFromFileOrSelection(
 
   state.codexHandoffStatus = `${mode} ready (${style}/${outputMode})`;
   state.lastFilePath = filePath;
-  state.statusBarSummary = 'TSL: Handoff ready';
+  state.statusBarSummary = '$(comment-discussion) TSL Handoff Ready';
   output.appendLine(`Codex handoff prompt generated: mode=${mode}, style=${style}, output=${outputMode}`);
 }
 
-function getCurrentTslFilePath(): string | undefined {
+function buildFallbackRepairPayload(filePath: string, mode: HandoffMode): Record<string, unknown> {
+  const source = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
+  return {
+    source,
+    diagnostics: [],
+    validation_mode: mode === 'continue' ? 'unknown' : mode,
+    failure_kind: 'report_missing',
+    diff_summary: 'No validation report found. Run smoke/spec/oracle first for richer context.',
+    mismatch_fields: [],
+    reference_strategy: 'unknown',
+    runtime_adapter: 'unknown',
+    runtime_stage: '',
+    runtime_errors: [],
+    runtime_intermediate_trace: [],
+    runtime_final_env: {},
+    suggested_next_action: 'Run smoke/spec/oracle on current file, then retry Codex handoff.',
+    minimal_repro_case: {},
+  };
+}
+
+function getCurrentTslFilePath(targetUri?: vscode.Uri): string | undefined {
+  if (targetUri?.scheme === 'file' && targetUri.fsPath.toLowerCase().endsWith('.tsl')) {
+    return targetUri.fsPath;
+  }
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'tsl') {
     return undefined;

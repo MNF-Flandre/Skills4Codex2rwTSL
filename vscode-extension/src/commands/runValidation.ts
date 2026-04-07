@@ -8,9 +8,10 @@ export async function runLintCurrentFile(
   runner: PythonBackendRunner,
   diagnostics: vscode.DiagnosticCollection,
   state: ExtensionRuntimeState,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  targetUri?: vscode.Uri
 ): Promise<void> {
-  const filePath = requireCurrentTslFilePath();
+  const filePath = requireCurrentTslFilePath(targetUri);
   ensureFileExists(filePath);
 
   const payload = await runner.lint(filePath);
@@ -20,10 +21,14 @@ export async function runLintCurrentFile(
   state.lastValidationMode = 'lint';
   state.lastFailureKind = payload.status === 'fail' ? 'lint_error' : 'none';
   state.lastFilePath = filePath;
-  state.statusBarSummary = payload.status === 'pass' ? 'TSL: Ready' : 'TSL: Lint failed';
+  state.statusBarSummary = payload.status === 'pass' ? '$(check) TSL Ready' : '$(error) TSL Lint Failed';
 
   output.appendLine(`Lint ${payload.status}: ${filePath}`);
-  vscode.window.showInformationMessage(`TSL lint ${payload.status}: ${payload.diagnostic_count} diagnostics`);
+  if (payload.status === 'pass') {
+    vscode.window.showInformationMessage(`TSL lint passed: ${payload.diagnostic_count} diagnostics.`);
+  } else {
+    vscode.window.showWarningMessage(`TSL lint failed: ${payload.diagnostic_count} diagnostics. Check Problems + Output.`);
+  }
 }
 
 export async function runPreflight(
@@ -37,13 +42,23 @@ export async function runPreflight(
   const payload = await runner.preflight();
   state.preflightStatus = payload.status;
   state.connectionSummary = await runner.getConnectionSummary();
-  state.statusBarSummary = payload.status === 'pass' ? 'TSL: Connected' : 'TSL: Preflight failed';
+  state.statusBarSummary = payload.status === 'pass' ? '$(check) TSL Preflight Passed' : '$(error) TSL Preflight Failed';
 
   output.appendLine(`Preflight ${payload.status}: mode=${payload.connection_mode}`);
   if (payload.status === 'pass') {
     vscode.window.showInformationMessage('TSL preflight passed.');
   } else {
-    vscode.window.showWarningMessage('TSL preflight failed. Check output channel for details.');
+    const blocked = [
+      payload.package_ready ? '' : 'package',
+      payload.config_ready ? '' : 'config',
+      payload.case_ready ? '' : 'case',
+      payload.network_ready ? '' : 'network',
+      payload.sdk_ready ? '' : 'sdk',
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const reason = blocked ? `blocked by: ${blocked}` : 'see output for details';
+    vscode.window.showWarningMessage(`TSL preflight failed (${reason}).`);
   }
 }
 
@@ -52,9 +67,10 @@ export async function runValidationMode(
   runner: PythonBackendRunner,
   diagnostics: vscode.DiagnosticCollection,
   state: ExtensionRuntimeState,
-  output: vscode.OutputChannel
+  output: vscode.OutputChannel,
+  targetUri?: vscode.Uri
 ): Promise<void> {
-  const filePath = requireCurrentTslFilePath();
+  const filePath = requireCurrentTslFilePath(targetUri);
   ensureFileExists(filePath);
 
   const payload = await runner.validate(filePath, mode);
@@ -67,7 +83,7 @@ export async function runValidationMode(
   state.lastFailureKind = payload.failure_kind || 'none';
   state.lastReportPath = reportPath;
   state.lastFilePath = filePath;
-  state.statusBarSummary = payload.status === 'pass' ? 'TSL: Connected' : 'TSL: Validation failed';
+  state.statusBarSummary = payload.status === 'pass' ? `$(check) TSL ${mode} Passed` : `$(error) TSL ${mode} Failed`;
 
   output.appendLine(`Validation ${mode} ${payload.status}: ${filePath}`);
 
@@ -75,7 +91,8 @@ export async function runValidationMode(
   if (payload.status === 'pass') {
     vscode.window.showInformationMessage(msg);
   } else {
-    vscode.window.showWarningMessage(msg);
+    const summary = payload.result?.diff_report?.summary ? ` | ${payload.result.diff_report.summary}` : '';
+    vscode.window.showWarningMessage(`${msg}${summary}`);
   }
 }
 
@@ -117,10 +134,13 @@ function publishDiagnostics(
   diagnostics.set(vscode.Uri.file(filePath), convertLintDiagnostics(filePath, lintDiagnostics));
 }
 
-function requireCurrentTslFilePath(): string {
+function requireCurrentTslFilePath(targetUri?: vscode.Uri): string {
+  if (targetUri?.scheme === 'file' && targetUri.fsPath.toLowerCase().endsWith('.tsl')) {
+    return targetUri.fsPath;
+  }
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'tsl') {
-    throw new Error('Open a .tsl file first.');
+    throw new Error('Open or select a .tsl file first.');
   }
   return editor.document.uri.fsPath;
 }

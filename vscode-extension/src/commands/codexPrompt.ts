@@ -11,6 +11,16 @@ export function modeObjective(mode: HandoffMode): string {
   return 'Continue from current report and propose next executable patch + validation order.';
 }
 
+function modeActionRequest(mode: HandoffMode): string {
+  if (mode === 'fix') {
+    return 'Produce a concrete patch and list the exact validation order to re-run.';
+  }
+  if (mode === 'explain') {
+    return 'Explain failure layer, root cause, and smallest safe change with rationale.';
+  }
+  return 'Continue from existing report, propose next patch, and prioritize highest-signal checks.';
+}
+
 export function buildCodexPrompt(mode: HandoffMode, payload: Record<string, unknown>, style: PromptStyle): string {
   const source = String(payload.source ?? '');
   const diagnostics = payload.diagnostics ?? [];
@@ -27,12 +37,14 @@ export function buildCodexPrompt(mode: HandoffMode, payload: Record<string, unkn
   const suggested = String(payload.suggested_next_action ?? '');
   const minimalRepro = JSON.stringify(payload.minimal_repro_case ?? {});
   const objective = modeObjective(mode);
+  const actionRequest = modeActionRequest(mode);
 
   if (style === 'concise') {
     return [
       '# TSL Codex Handoff (Concise)',
       `Mode: ${mode}`,
       `Objective: ${objective}`,
+      `Action request: ${actionRequest}`,
       `Validation: ${validationMode}`,
       `Failure: ${failureKind}`,
       `Mismatch: ${mismatchFields}`,
@@ -50,33 +62,38 @@ export function buildCodexPrompt(mode: HandoffMode, payload: Record<string, unkn
     '# TSL Codex Handoff',
     '',
     `Mode: ${mode}`,
+    '## 1) Task Goal',
     `Objective: ${objective}`,
+    `Action request: ${actionRequest}`,
+    '',
+    '## 2) Failure Snapshot',
     `Validation mode: ${validationMode}`,
     `Failure kind: ${failureKind}`,
     `Diff summary: ${diffSummary}`,
     `Mismatch fields: ${mismatchFields}`,
+    '',
+    '## 3) Runtime / Reference Context',
     `Reference strategy: ${referenceStrategy}`,
     `Runtime adapter: ${runtimeAdapter}`,
     `Runtime stage: ${runtimeStage}`,
     `Runtime errors: ${runtimeErrors}`,
     `Suggested next action: ${suggested}`,
     '',
-    '## Lint diagnostics',
+    '## 4) Lint Diagnostics',
     JSON.stringify(diagnostics, null, 2),
     '',
-    '## Runtime intermediate trace',
+    '## 5) Runtime Intermediate Trace',
     trace,
     '',
-    '## Runtime final_env',
+    '## 6) Runtime Final Env',
     finalEnv,
     '',
-    '## Minimal repro case',
+    '## 7) Minimal Repro Case',
     minimalRepro,
     '',
-    '## Current TSL source',
+    '## 8) Current TSL Source',
     '```tsl',
     source,
     '```',
   ].join('\n');
 }
-

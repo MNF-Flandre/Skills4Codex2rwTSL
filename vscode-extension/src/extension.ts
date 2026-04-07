@@ -43,13 +43,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lastReportPath: pathResolver.resolveValidationReportPath(configuration.getValidationReportPath()),
     lastFilePath: '',
     codexHandoffStatus: 'idle',
-    statusBarSummary: 'TSL: Not configured',
+    statusBarSummary: '$(circle-slash) TSL Not configured',
   };
 
   const runner = new PythonBackendRunner(output, configuration, pathResolver);
   state.connectionSummary = await runner.getConnectionSummary();
   const hint = await runner.getConnectionHint();
-  state.statusBarSummary = hint === 'ready' ? 'TSL: Ready' : hint === 'blocked' ? 'TSL: Config incomplete' : 'TSL: Not configured';
+  state.statusBarSummary =
+    hint === 'ready' ? '$(check) TSL Ready' : hint === 'blocked' ? '$(warning) TSL Config incomplete' : '$(circle-slash) TSL Not configured';
 
   const provider = new TslWorkbenchProvider(state);
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -69,69 +70,74 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const refreshUi = () => {
     provider.refresh();
     statusBar.text = state.statusBarSummary;
+    statusBar.color = state.statusBarSummary.includes('Failed')
+      ? new vscode.ThemeColor('errorForeground')
+      : state.statusBarSummary.includes('Ready')
+        ? new vscode.ThemeColor('charts.green')
+        : undefined;
   };
 
   context.subscriptions.push(
-    registerSafeCommand('tslWorkbench.configureConnection', async () => {
+    registerSafeCommand('tslWorkbench.configureConnection', output, async () => {
       await runner.configureConnectionInteractive();
       state.connectionSummary = await runner.getConnectionSummary();
-      state.statusBarSummary = (await runner.getConnectionHint()) === 'ready' ? 'TSL: Ready' : 'TSL: Config incomplete';
+      state.statusBarSummary = (await runner.getConnectionHint()) === 'ready' ? '$(check) TSL Ready' : '$(warning) TSL Config incomplete';
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.runPreflight', async () => {
+    registerSafeCommand('tslWorkbench.runPreflight', output, async () => {
       await runPreflight(runner, state, output);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.runLintCurrentFile', async () => {
-      await runLintCurrentFile(runner, diagnostics, state, output);
+    registerSafeCommand('tslWorkbench.runLintCurrentFile', output, async (targetUri?: vscode.Uri) => {
+      await runLintCurrentFile(runner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.runSmokeCurrentFile', async () => {
-      await runValidationMode('smoke', runner, diagnostics, state, output);
+    registerSafeCommand('tslWorkbench.runSmokeCurrentFile', output, async (targetUri?: vscode.Uri) => {
+      await runValidationMode('smoke', runner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.runSpecCurrentFile', async () => {
-      await runValidationMode('spec', runner, diagnostics, state, output);
+    registerSafeCommand('tslWorkbench.runSpecCurrentFile', output, async (targetUri?: vscode.Uri) => {
+      await runValidationMode('spec', runner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.runOracleCurrentFile', async () => {
-      await runValidationMode('oracle', runner, diagnostics, state, output);
+    registerSafeCommand('tslWorkbench.runOracleCurrentFile', output, async (targetUri?: vscode.Uri) => {
+      await runValidationMode('oracle', runner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.openLastReport', async () => {
+    registerSafeCommand('tslWorkbench.openLastReport', output, async () => {
       await openLastReport(state);
     }),
-    registerSafeCommand('tslWorkbench.askCodexFixCurrentFile', async () => {
-      await askCodexFixCurrentFile(runner, state, output);
+    registerSafeCommand('tslWorkbench.askCodexFixCurrentFile', output, async (targetUri?: vscode.Uri) => {
+      await askCodexFixCurrentFile(runner, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.askCodexExplainCurrentError', async () => {
-      await askCodexExplainCurrentError(runner, state, output);
+    registerSafeCommand('tslWorkbench.askCodexExplainCurrentError', output, async (targetUri?: vscode.Uri) => {
+      await askCodexExplainCurrentError(runner, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.askCodexContinueFromReport', async () => {
-      await askCodexContinueFromReport(runner, state, output);
+    registerSafeCommand('tslWorkbench.askCodexContinueFromReport', output, async (targetUri?: vscode.Uri) => {
+      await askCodexContinueFromReport(runner, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.askCodexHandOffSelection', async () => {
-      await askCodexHandOffSelection(runner, state, output);
+    registerSafeCommand('tslWorkbench.askCodexHandOffSelection', output, async (targetUri?: vscode.Uri) => {
+      await askCodexHandOffSelection(runner, state, output, targetUri);
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.clearStoredPassword', async () => {
+    registerSafeCommand('tslWorkbench.clearStoredPassword', output, async () => {
       await runner.clearStoredPassword();
       state.connectionSummary = await runner.getConnectionSummary();
-      state.statusBarSummary = 'TSL: Config incomplete';
+      state.statusBarSummary = '$(warning) TSL Config incomplete';
       vscode.window.showInformationMessage('TSL password removed from SecretStorage.');
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.resetConnection', async () => {
+    registerSafeCommand('tslWorkbench.resetConnection', output, async () => {
       await runner.resetConnectionConfiguration();
       state.connectionSummary = await runner.getConnectionSummary();
-      state.statusBarSummary = 'TSL: Not configured';
+      state.statusBarSummary = '$(circle-slash) TSL Not configured';
       vscode.window.showInformationMessage('TSL connection settings reset.');
       refreshUi();
     }),
-    registerSafeCommand('tslWorkbench.revealConnectionSummary', async () => {
+    registerSafeCommand('tslWorkbench.revealConnectionSummary', output, async () => {
       const summary = [
         `Connection: ${await runner.getConnectionSummary()}`,
         `Backend: ${summarizeBackend(pathResolver)}`,
@@ -139,7 +145,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ].join('\n');
       vscode.window.showInformationMessage(summary, { modal: false });
     }),
-    registerSafeCommand('tslWorkbench.refreshSidebar', async () => {
+    registerSafeCommand('tslWorkbench.refreshSidebar', output, async () => {
       refreshUi();
     })
   );
@@ -154,13 +160,21 @@ function summarizeBackend(resolver: PathResolver): string {
   return `${backend.effectiveMode} @ ${backend.backendRoot}`;
 }
 
-function registerSafeCommand(command: string, callback: () => Promise<void>): vscode.Disposable {
-  return vscode.commands.registerCommand(command, async () => {
+function registerSafeCommand(
+  command: string,
+  output: vscode.OutputChannel,
+  callback: (...args: any[]) => Promise<void>
+): vscode.Disposable {
+  return vscode.commands.registerCommand(command, async (...args: any[]) => {
     try {
-      await callback();
+      await callback(...args);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      vscode.window.showErrorMessage(`TSL Workbench: ${message}`);
+      output.appendLine(`[error] ${command}: ${message}`);
+      const action = await vscode.window.showErrorMessage(`TSL Workbench: ${message}`, 'Open Output');
+      if (action === 'Open Output') {
+        output.show(true);
+      }
     }
   });
 }
@@ -182,4 +196,3 @@ class TslCodeLensProvider implements vscode.CodeLensProvider {
     ];
   }
 }
-

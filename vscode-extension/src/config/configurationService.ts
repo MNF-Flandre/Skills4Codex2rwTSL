@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { BackendMode, ConnectionMode, ConnectionProfile, ValidationMode } from '../types';
+import { BackendMode, ConnectionMode, ConnectionProfile, ValidationAdapter, ValidationMode } from '../types';
+import { normalizeBackendMode, normalizeConnectionMode, normalizeValidationAdapter } from './configurationModel';
 
 const PASSWORD_SECRET_KEY = 'tslWorkbench.connection.password';
 
@@ -11,11 +12,7 @@ export class ConfigurationService {
   }
 
   public getBackendMode(): BackendMode {
-    const mode = this.getString('backend.mode', 'auto');
-    if (mode === 'repo_attached_mode' || mode === 'external_workspace_mode') {
-      return mode;
-    }
-    return 'auto';
+    return normalizeBackendMode(this.getString('backend.mode', 'auto'));
   }
 
   public getBackendRoot(): string {
@@ -33,6 +30,10 @@ export class ConfigurationService {
 
   public getValidationTaskPath(): string {
     return this.getString('validation.taskPath', '');
+  }
+
+  public getValidationAdapter(): ValidationAdapter {
+    return normalizeValidationAdapter(this.getString('validation.adapter', 'auto'));
   }
 
   public getValidationReportPath(): string {
@@ -101,10 +102,13 @@ export class ConfigurationService {
     await this.clearPassword();
   }
 
+  public async updateBackendRoot(backendRoot: string): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration('tslWorkbench');
+    await cfg.update('backend.root', backendRoot.trim(), vscode.ConfigurationTarget.Workspace);
+  }
+
   private getConnectionMode(): ConnectionMode {
-    return this.getString('connection.mode', 'local_client_bridge') === 'remote_api'
-      ? 'remote_api'
-      : 'local_client_bridge';
+    return normalizeConnectionMode(this.getString('connection.mode', 'local_client_bridge'));
   }
 
   private getString(key: string, defaultValue: string): string {
@@ -116,4 +120,3 @@ export class ConfigurationService {
     return Number.isFinite(value) ? value : defaultValue;
   }
 }
-

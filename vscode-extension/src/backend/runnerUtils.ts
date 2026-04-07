@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { ConnectionProfile } from '../types';
+import { ConnectionProfile, ValidationAdapter, ValidationMode } from '../types';
 
 export function parseJsonPayload<T>(text: string): T {
   const trimmed = text.trim();
@@ -50,3 +50,30 @@ export function ensureFileExists(filePath: string): void {
   }
 }
 
+export function buildValidateArgs(
+  filePath: string,
+  mode: ValidationMode,
+  adapter: ValidationAdapter,
+  casePath: string,
+  taskPath: string,
+  reportPath: string
+): string[] {
+  return [
+    '-m',
+    'tsl_validation.cli',
+    'validate',
+    filePath,
+    '--case',
+    casePath,
+    '--task',
+    taskPath,
+    '--adapter',
+    adapter,
+    '--mode',
+    mode,
+    '--lint-policy',
+    'warn',
+    '--report',
+    reportPath,
+  ];
+}
