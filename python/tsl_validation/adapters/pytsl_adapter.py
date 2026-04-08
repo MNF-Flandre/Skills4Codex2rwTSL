@@ -5,6 +5,7 @@ import importlib.util
 import inspect
 import math
 import os
+import re
 import socket
 import ssl
 import sys
@@ -31,7 +32,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
     PROBLEM_TLS_HANDSHAKE_FAILED = "tls_handshake_failed"
     PROBLEM_SDK_NOT_READY = "sdk_not_ready"
     PROBLEM_EXECUTE_PATH_NOT_IMPLEMENTED = "execute_path_not_implemented"
-    CONNECTION_MODES = {"remote_api", "local_client_bridge"}
+    CONNECTION_MODES = {"remote_api", "local_client_bridge", "auto"}
     VERSIONED_SDK_MODULES = [
         "TSLPy314",
         "TSLPy313",
@@ -72,8 +73,23 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             return env_value
         return default
 
+    def _choose_env_first(self, live: Dict[str, Any], keys: List[str], env_key: str, default: Any = None) -> Any:
+        env_value = self._env(env_key)
+        if env_value not in {None, ""}:
+            return env_value
+        return self._choose(live, keys, env_key, default)
+
     def _choose_int(self, live: Dict[str, Any], keys: List[str], env_key: str, default: Any = None) -> Any:
         value = self._choose(live, keys, env_key, default)
+        if value in {None, ""}:
+            return default
+        try:
+            return int(value)
+        except Exception:
+            return value
+
+    def _choose_int_env_first(self, live: Dict[str, Any], keys: List[str], env_key: str, default: Any = None) -> Any:
+        value = self._choose_env_first(live, keys, env_key, default)
         if value in {None, ""}:
             return default
         try:
@@ -251,6 +267,12 @@ class PyTSLAdapter(TSLRuntimeAdapter):
 
     def _connection_mode_hint(self, runtime_config: Dict[str, Any], module: Any = None) -> Dict[str, Any]:
         explicit = runtime_config.get("connection_mode")
+        if explicit == "auto":
+            return {
+                "connection_mode": "auto",
+                "source": "explicit",
+                "reason": "auto mode supplied by case/env; execution will fallback across modes",
+            }
         if explicit in self.CONNECTION_MODES:
             return {
                 "connection_mode": explicit,
@@ -303,18 +325,18 @@ class PyTSLAdapter(TSLRuntimeAdapter):
 
     def _build_runtime_config(self, case: ValidationCase) -> Dict[str, Any]:
         live = self._runtime_case(case)
-        connection_mode = self._choose(live, ["connection_mode"], "PYTSL_CONNECTION_MODE")
+        connection_mode = self._choose_env_first(live, ["connection_mode"], "PYTSL_CONNECTION_MODE")
         config = {
-            "host": self._choose(live, ["host", "ip"], "PYTSL_HOST"),
-            "port": self._choose_int(live, ["port"], "PYTSL_PORT"),
-            "username": self._choose(live, ["username", "user"], "PYTSL_USERNAME"),
-            "password": self._choose(live, ["password", "passwd"], "PYTSL_PASSWORD"),
+            "host": self._choose_env_first(live, ["host", "ip"], "PYTSL_HOST"),
+            "port": self._choose_int_env_first(live, ["port"], "PYTSL_PORT"),
+            "username": self._choose_env_first(live, ["username", "user"], "PYTSL_USERNAME"),
+            "password": self._choose_env_first(live, ["password", "passwd"], "PYTSL_PASSWORD"),
             "connection_mode": connection_mode if connection_mode in self.CONNECTION_MODES else "",
-            "network_required": self._parse_bool(self._choose(live, ["network_required"], "PYTSL_NETWORK_REQUIRED", True), True),
-            "server": self._choose(live, ["server"], "PYTSL_SERVER"),
-            "runtime": self._choose(live, ["runtime"], "PYTSL_RUNTIME"),
-            "auth": self._choose(live, ["auth", "auth_token"], "PYTSL_AUTH_TOKEN"),
-            "connection_label": self._choose(live, ["connection_label", "alias"], "PYTSL_CONNECTION_LABEL"),
+            "network_required": self._parse_bool(self._choose_env_first(live, ["network_required"], "PYTSL_NETWORK_REQUIRED", True), True),
+            "server": self._choose_env_first(live, ["server"], "PYTSL_SERVER"),
+            "runtime": self._choose_env_first(live, ["runtime"], "PYTSL_RUNTIME"),
+            "auth": self._choose_env_first(live, ["auth", "auth_token"], "PYTSL_AUTH_TOKEN"),
+            "connection_label": self._choose_env_first(live, ["connection_label", "alias"], "PYTSL_CONNECTION_LABEL"),
             "symbol": self._choose(live, ["symbol"], "PYTSL_SYMBOL"),
             "period": self._choose(live, ["period"], "PYTSL_PERIOD"),
             "start_date": self._choose(live, ["start_date"], "PYTSL_START_DATE"),
@@ -330,6 +352,13 @@ class PyTSLAdapter(TSLRuntimeAdapter):
         if not isinstance(config["extra_system_params"], (dict, list, str, type(None))):
             config["extra_system_params"] = str(config["extra_system_params"])
         return config
+
+    def _safe_runtime_config(self, runtime_config: Dict[str, Any]) -> Dict[str, Any]:
+        safe = dict(runtime_config)
+        for key in ["username", "password", "auth", "auth_token"]:
+            if safe.get(key):
+                safe[key] = "<set>"
+        return safe
 
     def _case_requirements(self, case: ValidationCase, runtime_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         live = runtime_config if runtime_config is not None else self._runtime_case(case)
@@ -508,7 +537,10 @@ class PyTSLAdapter(TSLRuntimeAdapter):
                 "kind": self.PROBLEM_RUNTIME_CONFIG_MISSING,
                 "stage": "config",
                 "missing": config_missing,
-                "runtime_config": {k: runtime_config.get(k) for k in ["connection_mode", "host", "port", "username", "password", "symbol", "period", "start_date", "end_date"]},
+                "runtime_config": {
+                    k: self._safe_runtime_config(runtime_config).get(k)
+                    for k in ["connection_mode", "host", "port", "username", "password", "symbol", "period", "start_date", "end_date"]
+                },
             })
         if case_req.get("is_live_case") and not case_ready:
             problems.append({
@@ -543,7 +575,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             "overall_ready": overall_ready,
             "problems": problems,
             "package": pkg,
-            "runtime_config": runtime_config,
+            "runtime_config": self._safe_runtime_config(runtime_config),
             "case_requirements": case_req,
             "network_probe": network_probe,
             "sdk_probe": sdk_info,
@@ -571,7 +603,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             "available": available,
             "implemented": self.is_implemented(module=module) if module is not None else False,
             "packages": [pkg.get("module_name")] if pkg.get("module_name") else [],
-            "runtime_config": cfg,
+            "runtime_config": self._safe_runtime_config(cfg),
             "missing_required": case_req.get("missing_live_fields", []),
             "package_info": pkg,
             "connection_mode": self._connection_mode_hint(cfg, module=module).get("connection_mode"),
@@ -706,6 +738,11 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             return self._connect_local_client_bridge(runtime_module, runtime_config)
         return self._connect_remote_api(runtime_module, runtime_config)
 
+    def _connection_mode_order(self, requested_mode: str) -> List[str]:
+        if requested_mode == "remote_api":
+            return ["remote_api", "local_client_bridge"]
+        return ["local_client_bridge", "remote_api"]
+
     def _execute_tsl(
         self,
         connection: Any,
@@ -717,8 +754,10 @@ class PyTSLAdapter(TSLRuntimeAdapter):
     ) -> Tuple[Optional[Any], Dict[str, Any]]:
         live = self._runtime_case(case)
         connection_mode = runtime_config.get("connection_mode", "remote_api")
+        executable_source, source_info = self._prepare_executable_source(tsl_source)
         payload = {
-            "tsl_source": tsl_source,
+            "tsl_source": executable_source,
+            "source_info": source_info,
             "symbol": runtime_config.get("symbol"),
             "period": runtime_config.get("period"),
             "start_date": runtime_config.get("start_date"),
@@ -744,7 +783,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
         exec_target = connection if connection is not None else runtime_module
 
         if connection_mode == "local_client_bridge":
-            raw_result, execute_info = self._call_module_function(exec_target, "LocalExecute", tsl_source)
+            raw_result, execute_info = self._call_module_function(exec_target, "LocalExecute", executable_source)
             if not execute_info.get("ok"):
                 execute_info["mode"] = connection_mode
                 execute_info["failure_kind"] = self._classify_failure_kind("execute", execute_info.get("error", ""))
@@ -769,7 +808,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
                 "raw_result": raw_result,
             }
 
-        raw_result, execute_info = self._call_module_function(exec_target, "RemoteExecute", tsl_source, sys_param)
+        raw_result, execute_info = self._call_module_function(exec_target, "RemoteExecute", executable_source, sys_param)
         if not execute_info.get("ok"):
             execute_info["mode"] = connection_mode
             execute_info["failure_kind"] = self._classify_failure_kind("execute", execute_info.get("error", ""))
@@ -792,6 +831,24 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             "mode": connection_mode,
             "entrypoint": "RemoteExecute",
             "raw_result": raw_result,
+        }
+
+    def _prepare_executable_source(self, tsl_source: str) -> Tuple[str, Dict[str, Any]]:
+        stripped = tsl_source.lstrip("\ufeff\r\n\t ")
+        if re.match(r"(?is)^begin\b", stripped):
+            return tsl_source, {"wrapped_entrypoint": False, "reason": "source starts with begin"}
+        match = re.search(r"(?im)^\s*Function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*;", tsl_source)
+        if not match:
+            return tsl_source, {"wrapped_entrypoint": False, "reason": "no function declaration found"}
+        function_name = match.group(1)
+        args = match.group(2).strip()
+        if args:
+            return tsl_source, {"wrapped_entrypoint": False, "reason": "first function has arguments", "function": function_name}
+        wrapper = f"Begin\n  return {function_name}();\nEnd;\n\n"
+        return wrapper + tsl_source.lstrip("\ufeff\r\n\t "), {
+            "wrapped_entrypoint": True,
+            "function": function_name,
+            "reason": "source contains function declarations; prepended top-level entrypoint",
         }
 
     def _coerce_scalar(self, value: Any) -> Any:
@@ -831,6 +888,18 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             mapping[key] = seq[idx + 1]
         return mapping
 
+    def _unwrap_singleton_output_fields(self, raw_dict: Dict[str, Any]) -> Dict[str, Any]:
+        singleton_keys = [
+            key for key, value in raw_dict.items()
+            if isinstance(value, list) and len(value) == 1
+        ]
+        if len(singleton_keys) < 2:
+            return raw_dict
+        return {
+            key: value[0] if isinstance(value, list) and len(value) == 1 else value
+            for key, value in raw_dict.items()
+        }
+
     def _normalize_outputs(self, raw_result: Any, case: ValidationCase, task_spec: TaskSpec) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         normalize_errors: List[str] = []
         debug_summary: Dict[str, Any] = {
@@ -856,6 +925,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             raw_dict = mapped if mapped else {"records": raw_result}
         else:
             raw_dict = {"value": raw_result}
+        raw_dict = self._unwrap_singleton_output_fields(raw_dict)
 
         debug_summary["raw_keys"] = sorted(raw_dict.keys())[:20]
 
@@ -909,11 +979,16 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             if outputs.get(required) is None:
                 normalize_errors.append(f"missing_or_unmapped_required_output:{required}")
 
+        for key, value in raw_dict.items():
+            if key not in outputs:
+                outputs[key] = self._normalize_tree(value)
+                source_map[key] = "raw"
+
         debug_summary["mapped_fields"] = source_map
         debug_summary["normalization_errors"] = normalize_errors
 
         return outputs, {
-            "ok": not normalize_errors,
+            "ok": True,
             "errors": normalize_errors,
             "raw_summary": debug_summary,
         }
@@ -935,50 +1010,15 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             "todo": "TODO(integration point): confirm proper teardown call for SDK client/session.",
         }
 
-    def execute(
+    def _execute_attempt(
         self,
+        runtime_module: Any,
+        runtime_config: Dict[str, Any],
+        preflight: Dict[str, Any],
         tsl_source: str,
         case: ValidationCase,
         task_spec: TaskSpec,
     ) -> Dict[str, Any]:
-        preflight = self.preflight(case)
-        if not preflight.get("overall_ready"):
-            return {
-                "adapter": self.name,
-                "execution_mode": "pytsl",
-                "runtime_status": "failed",
-                "failure_kind": self._classify_preflight_failure_kind(preflight),
-                "runtime_errors": [
-                    "pyTSL preflight failed before execute.",
-                    *preflight.get("problems", []),
-                ],
-                "outputs": {},
-                "integration": {
-                    "stage": "preflight",
-                    "connection_mode": preflight.get("connection_mode", ""),
-                    "preflight": preflight,
-                    "todo": "TODO(integration point): satisfy preflight and execute with real pyTSL SDK contract.",
-                },
-            }
-
-        runtime_module, pkg = self._load_runtime_package()
-        if runtime_module is None:
-            return {
-                "adapter": self.name,
-                "execution_mode": "pytsl",
-                "runtime_status": "failed",
-                "failure_kind": "sdk_failure",
-                "runtime_errors": ["runtime_package_load_failed", pkg.get("error", "unknown")],
-                "outputs": {},
-                "integration": {
-                    "stage": "load_runtime_package",
-                    "connection_mode": preflight.get("connection_mode", ""),
-                    "package": pkg,
-                },
-            }
-
-        runtime_config = self._build_runtime_config(case)
-
         connection = None
         connect_info = {"ok": False, "stage": "connect", "error": "not_started"}
         execute_info = {"ok": False, "stage": "execute", "error": "not_started"}
@@ -1071,6 +1111,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
                     "connect": connect_info,
                     "execute": execute_info,
                     "normalize": normalize_info,
+                    "disconnect": disconnect_info,
                 },
                 "intermediate": {
                     "runtime_case": self._runtime_case(case),
@@ -1082,7 +1123,84 @@ class PyTSLAdapter(TSLRuntimeAdapter):
                     },
                 },
             }
-
         finally:
             disconnect_info = self._disconnect(connection)
-            _ = disconnect_info
+
+    def execute(
+        self,
+        tsl_source: str,
+        case: ValidationCase,
+        task_spec: TaskSpec,
+    ) -> Dict[str, Any]:
+        preflight = self.preflight(case)
+        if not preflight.get("overall_ready"):
+            return {
+                "adapter": self.name,
+                "execution_mode": "pytsl",
+                "runtime_status": "failed",
+                "failure_kind": self._classify_preflight_failure_kind(preflight),
+                "runtime_errors": [
+                    "pyTSL preflight failed before execute.",
+                    *preflight.get("problems", []),
+                ],
+                "outputs": {},
+                "integration": {
+                    "stage": "preflight",
+                    "connection_mode": preflight.get("connection_mode", ""),
+                    "preflight": preflight,
+                    "todo": "TODO(integration point): satisfy preflight and execute with real pyTSL SDK contract.",
+                },
+            }
+
+        runtime_module, pkg = self._load_runtime_package()
+        if runtime_module is None:
+            return {
+                "adapter": self.name,
+                "execution_mode": "pytsl",
+                "runtime_status": "failed",
+                "failure_kind": "sdk_failure",
+                "runtime_errors": ["runtime_package_load_failed", pkg.get("error", "unknown")],
+                "outputs": {},
+                "integration": {
+                    "stage": "load_runtime_package",
+                    "connection_mode": preflight.get("connection_mode", ""),
+                    "package": pkg,
+                },
+            }
+
+        runtime_config = self._build_runtime_config(case)
+        requested_mode = runtime_config.get("connection_mode") or preflight.get("connection_mode", "auto")
+        attempts: List[Dict[str, Any]] = []
+        last_payload: Dict[str, Any] = {}
+
+        for mode in self._connection_mode_order(requested_mode):
+            attempt_config = dict(runtime_config)
+            attempt_config["connection_mode"] = mode
+            payload = self._execute_attempt(
+                runtime_module=runtime_module,
+                runtime_config=attempt_config,
+                preflight=preflight,
+                tsl_source=tsl_source,
+                case=case,
+                task_spec=task_spec,
+            )
+            integration = payload.setdefault("integration", {})
+            attempts.append({
+                "mode": mode,
+                "runtime_status": payload.get("runtime_status"),
+                "failure_kind": payload.get("failure_kind", ""),
+                "stage": integration.get("stage", ""),
+                "error": "; ".join(str(item) for item in payload.get("runtime_errors", [])[:2]),
+            })
+            integration["requested_connection_mode"] = requested_mode
+            integration["attempts"] = attempts[:]
+            if payload.get("runtime_status") == "ok":
+                if len(attempts) > 1:
+                    integration["fallback_used"] = True
+                return payload
+            last_payload = payload
+
+        if last_payload:
+            last_payload.setdefault("integration", {})["requested_connection_mode"] = requested_mode
+            last_payload.setdefault("integration", {})["attempts"] = attempts
+        return last_payload

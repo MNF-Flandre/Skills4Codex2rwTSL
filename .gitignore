@@ -7,3 +7,14 @@ __pycache__/
 config/local.env
 config/*.local.env
 config/*.secret.env
+
+# VS Code extension build artifacts
+vscode-extension/node_modules/
+vscode-extension/out/
+vscode-extension/*.vsix
+vscode-extension/resources/tsl-docs/
+vscode-extension/resources/tsl-backend/
+vscode-extension/reports/
+vscode-extension/.vscode/
+reports/
+.tools/

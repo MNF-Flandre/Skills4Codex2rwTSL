@@ -1,0 +1,397 @@
+{
+  "name": "tsl-workbench",
+  "displayName": "TSL Workbench",
+  "description": "TSL development workbench for VS Code with Python validation backend and Codex-friendly handoff.",
+  "version": "0.2.3",
+  "publisher": "mnf-flandre",
+  "preview": true,
+  "icon": "resources/marketplace-icon.png",
+  "galleryBanner": {
+    "color": "#1f2937",
+    "theme": "dark"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MNF-Flandre/Skills4Codex2rwTSL.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MNF-Flandre/Skills4Codex2rwTSL/issues"
+  },
+  "homepage": "https://github.com/MNF-Flandre/Skills4Codex2rwTSL",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "tsl",
+    "validation",
+    "codex",
+    "python",
+    "workbench"
+  ],
+  "activationEvents": [
+    "onLanguage:tsl",
+    "onView:tslWorkbench.sidebar",
+    "onCommand:tslWorkbench.runSetupWizard",
+    "onCommand:tslWorkbench.configureConnection",
+    "onCommand:tslWorkbench.runPreflight",
+    "onCommand:tslWorkbench.runLintCurrentFile",
+    "onCommand:tslWorkbench.runSmokeCurrentFile",
+    "onCommand:tslWorkbench.runSpecCurrentFile",
+    "onCommand:tslWorkbench.runOracleCurrentFile",
+    "onCommand:tslWorkbench.openLastReport",
+    "onCommand:tslWorkbench.askCodexFixCurrentFile",
+    "onCommand:tslWorkbench.askCodexExplainCurrentError",
+    "onCommand:tslWorkbench.askCodexContinueFromReport",
+    "onCommand:tslWorkbench.askCodexHandOffSelection",
+    "onCommand:tslWorkbench.prepareCodexContext",
+    "onCommand:tslWorkbench.installTslPyRuntime",
+    "onCommand:tslWorkbench.clearStoredPassword",
+    "onCommand:tslWorkbench.resetConnection",
+    "onCommand:tslWorkbench.revealConnectionSummary",
+    "onCommand:tslWorkbench.runDiagnosticWizard",
+    "onCommand:tslWorkbench.refreshSidebar"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tslWorkbench.runSetupWizard",
+        "title": "TSL: Setup Wizard"
+      },
+      {
+        "command": "tslWorkbench.configureConnection",
+        "title": "TSL: Configure Connection"
+      },
+      {
+        "command": "tslWorkbench.runPreflight",
+        "title": "TSL: Run Preflight"
+      },
+      {
+        "command": "tslWorkbench.runLintCurrentFile",
+        "title": "TSL: Run Lint on Current File"
+      },
+      {
+        "command": "tslWorkbench.runSmokeCurrentFile",
+        "title": "TSL: Run Smoke on Current File"
+      },
+      {
+        "command": "tslWorkbench.runSpecCurrentFile",
+        "title": "TSL: Run Spec on Current File"
+      },
+      {
+        "command": "tslWorkbench.runOracleCurrentFile",
+        "title": "TSL: Run Oracle on Current File"
+      },
+      {
+        "command": "tslWorkbench.openLastReport",
+        "title": "TSL: Open Last Report"
+      },
+      {
+        "command": "tslWorkbench.askCodexFixCurrentFile",
+        "title": "TSL: Ask Codex to Fix Current File"
+      },
+      {
+        "command": "tslWorkbench.askCodexExplainCurrentError",
+        "title": "TSL: Ask Codex to Explain Current Error"
+      },
+      {
+        "command": "tslWorkbench.askCodexContinueFromReport",
+        "title": "TSL: Ask Codex to Continue From Report"
+      },
+      {
+        "command": "tslWorkbench.refreshSidebar",
+        "title": "TSL: Refresh Sidebar"
+      },
+      {
+        "command": "tslWorkbench.askCodexHandOffSelection",
+        "title": "TSL: Ask Codex for Current Selection"
+      },
+      {
+        "command": "tslWorkbench.prepareCodexContext",
+        "title": "TSL: Prepare Codex Takeover Context"
+      },
+      {
+        "command": "tslWorkbench.installTslPyRuntime",
+        "title": "TSL: Install/Bind TSLPy Runtime"
+      },
+      {
+        "command": "tslWorkbench.clearStoredPassword",
+        "title": "TSL: Clear Stored Password"
+      },
+      {
+        "command": "tslWorkbench.resetConnection",
+        "title": "TSL: Reset Connection Config"
+      },
+      {
+        "command": "tslWorkbench.revealConnectionSummary",
+        "title": "TSL: Reveal Current Connection Summary"
+      },
+      {
+        "command": "tslWorkbench.runDiagnosticWizard",
+        "title": "TSL: Run Diagnostic Wizard"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tslWorkbench",
+          "title": "TSL Workbench",
+          "icon": "resources/tsl.svg"
+        }
+      ]
+    },
+    "views": {
+      "tslWorkbench": [
+        {
+          "id": "tslWorkbench.sidebar",
+          "name": "TSL Workbench"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TSL Workbench",
+      "properties": {
+        "tslWorkbench.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Python executable used to run TSL backend commands."
+        },
+        "tslWorkbench.backend.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "repo_attached_mode",
+            "external_workspace_mode"
+          ],
+          "default": "auto",
+          "description": "How backend root is discovered. Use external_workspace_mode with explicit backend.root when using extension outside this repository."
+        },
+        "tslWorkbench.backend.root": {
+          "type": "string",
+          "default": "",
+          "description": "Optional backend project root containing python/ide_bridge.py and python/tsl_validation."
+        },
+        "tslWorkbench.backend.pythonModulePath": {
+          "type": "string",
+          "default": "python",
+          "description": "Python module path directory under backend root for PYTHONPATH."
+        },
+        "tslWorkbench.connection.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "remote_api",
+            "local_client_bridge"
+          ],
+          "default": "auto",
+          "description": "Connection mode for runtime validation. auto tries local_client_bridge then falls back to remote_api."
+        },
+        "tslWorkbench.connection.host": {
+          "type": "string",
+          "default": "",
+          "description": "Runtime host for pyTSL bridge. Leave empty until configured."
+        },
+        "tslWorkbench.connection.port": {
+          "type": "number",
+          "default": 443,
+          "description": "Runtime port for pyTSL bridge."
+        },
+        "tslWorkbench.connection.username": {
+          "type": "string",
+          "default": "",
+          "description": "Runtime username for pyTSL bridge."
+        },
+        "tslWorkbench.connection.sdkPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional local SDK path for pyTSL module discovery."
+        },
+        "tslWorkbench.connection.localClientPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional local client path when using local_client_bridge mode."
+        },
+        "tslWorkbench.validation.casePathSmoke": {
+          "type": "string",
+          "default": "examples/live_cases/live_smoke_case.json",
+          "description": "Validation case path for smoke mode. Relative paths resolve from backend root."
+        },
+        "tslWorkbench.validation.casePathSpec": {
+          "type": "string",
+          "default": "examples/live_cases/live_smoke_case.json",
+          "description": "Validation case path for spec mode. Relative paths resolve from backend root."
+        },
+        "tslWorkbench.validation.casePathOracle": {
+          "type": "string",
+          "default": "examples/live_cases/live_oracle_case.json",
+          "description": "Validation case path for oracle mode. Relative paths resolve from backend root."
+        },
+        "tslWorkbench.validation.taskPath": {
+          "type": "string",
+          "default": "examples/golden_cases/task_spec.json",
+          "description": "Task spec path used by validation runner. Relative paths resolve from backend root."
+        },
+        "tslWorkbench.validation.reportPath": {
+          "type": "string",
+          "default": "reports/vscode_last_report.md",
+          "description": "Report output path used by extension validations. Relative paths resolve from workspace root."
+        },
+        "tslWorkbench.validation.adapter": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "mock",
+            "pytsl"
+          ],
+          "default": "auto",
+          "description": "Validation adapter passed to backend validate command."
+        },
+        "tslWorkbench.codex.handoffOutput": {
+          "type": "string",
+          "enum": [
+            "clipboard",
+            "newDocument",
+            "both",
+            "workspaceTempFile"
+          ],
+          "default": "both",
+          "description": "How Codex handoff prompt is emitted."
+        },
+        "tslWorkbench.codex.promptStyle": {
+          "type": "string",
+          "enum": [
+            "full",
+            "concise"
+          ],
+          "default": "full",
+          "description": "Prompt style for Codex handoff."
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.runLintCurrentFile",
+          "group": "tsl@1"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.runSmokeCurrentFile",
+          "group": "tsl@2"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.runOracleCurrentFile",
+          "group": "tsl@3"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.runSpecCurrentFile",
+          "group": "tsl@4"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.askCodexHandOffSelection",
+          "group": "tsl@5"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.prepareCodexContext",
+          "group": "tsl@6"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.runOracleCurrentFile",
+          "group": "navigation@3"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.askCodexFixCurrentFile",
+          "group": "navigation@4"
+        }
+      ],
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.runLintCurrentFile",
+          "group": "tsl@1"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.runSmokeCurrentFile",
+          "group": "tsl@2"
+        },
+        {
+          "when": "resourceExtname == .tsl",
+          "command": "tslWorkbench.askCodexFixCurrentFile",
+          "group": "tsl@3"
+        }
+      ],
+      "view/title": [
+        {
+          "when": "view == tslWorkbench.sidebar",
+          "command": "tslWorkbench.refreshSidebar",
+          "group": "navigation"
+        },
+        {
+          "when": "view == tslWorkbench.sidebar",
+          "command": "tslWorkbench.revealConnectionSummary",
+          "group": "navigation"
+        },
+        {
+          "when": "view == tslWorkbench.sidebar",
+          "command": "tslWorkbench.runDiagnosticWizard",
+          "group": "navigation"
+        },
+        {
+          "when": "view == tslWorkbench.sidebar",
+          "command": "tslWorkbench.installTslPyRuntime",
+          "group": "navigation"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "tsl",
+        "aliases": [
+          "TSL",
+          "tsl"
+        ],
+        "extensions": [
+          ".tsl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "scripts": {
+    "prepare:docs": "node ./scripts/prepareBundledDocs.js",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node --test out/test/**/*.test.js",
+    "test:integration": "node ./scripts/runExtensionHostTests.js",
+    "release:check": "node ./scripts/checkReleaseReadiness.js",
+    "release:package": "npm run prepare:docs && npm run release:check && npm run compile && npm test && npm run package",
+    "clean": "rm -rf out *.vsix",
+    "package": "npm run prepare:docs && vsce package",
+    "vscode:prepublish": "npm run compile",
+    "pretest": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.32",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.8.3"
+  }
+}

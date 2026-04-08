@@ -167,7 +167,7 @@ def _check_spec(case: ValidationCase, outputs: Dict[str, Any]) -> List[str]:
     return issues
 
 
-def resolve_adapter(name: str) -> Tuple[TSLRuntimeAdapter, Dict[str, Any]]:
+def resolve_adapter(name: str, case: Optional[ValidationCase] = None) -> Tuple[TSLRuntimeAdapter, Dict[str, Any]]:
     if name == "mock":
         return MockTSLAdapter(), {
             "requested_adapter": "mock",
@@ -184,8 +184,14 @@ def resolve_adapter(name: str) -> Tuple[TSLRuntimeAdapter, Dict[str, Any]]:
         }
     if name == "auto":
         py_adapter = PyTSLAdapter()
-        env_info = py_adapter.check_environment()
-        if env_info.get("available") and env_info.get("implemented"):
+        if case is not None:
+            env_info = py_adapter.preflight(case)
+            available = bool(env_info.get("overall_ready"))
+        else:
+            env_info = py_adapter.check_environment()
+            available = bool(env_info.get("available"))
+        implemented = bool(py_adapter.is_implemented())
+        if available and implemented:
             return py_adapter, {
                 "requested_adapter": "auto",
                 "actual_adapter": "pytsl",
@@ -194,7 +200,7 @@ def resolve_adapter(name: str) -> Tuple[TSLRuntimeAdapter, Dict[str, Any]]:
                 "pytsl_environment": env_info,
             }
         reason = "pytsl_not_ready_or_not_implemented"
-        if env_info.get("available") and not env_info.get("implemented"):
+        if available and not implemented:
             reason = "pytsl_execute_not_implemented"
         return MockTSLAdapter(), {
             "requested_adapter": "auto",
@@ -245,7 +251,7 @@ def run_validation(
     if lint_policy == "block" and lint_errors > 0:
         runtime_payload["skip_reason"] = "lint_policy_blocked_by_error"
     else:
-        adapter, resolution_info = resolve_adapter(adapter_name)
+        adapter, resolution_info = resolve_adapter(adapter_name, case)
         runtime_payload = adapter.execute(tsl_source=tsl_source, case=case, task_spec=task_spec)
         runtime_payload["runtime_skipped"] = False
         runtime_payload.setdefault("skip_reason", "")

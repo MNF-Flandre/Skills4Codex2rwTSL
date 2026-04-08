@@ -6,11 +6,15 @@ from typing import Dict, List, Set, Tuple
 from tsl_validation.schemas import Diagnostic
 
 
-_BLOCK_BEGIN_RE = re.compile(r"\b(begin|if|for|while|case)\b", re.IGNORECASE)
+_BLOCK_BEGIN_RE = re.compile(r"\bbegin\b", re.IGNORECASE)
+_CONTROL_BLOCK_BEGIN_RE = re.compile(r"^\s*(try|case)\b", re.IGNORECASE)
 _BLOCK_END_RE = re.compile(r"\b(end)\b", re.IGNORECASE)
 _ASSIGN_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:=(.*)$")
 _VAR_TOKEN_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 _DATE_LITERAL_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+_FUNCTION_DEF_RE = re.compile(r"^\s*Function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*;", re.IGNORECASE)
+_FOR_IN_RE = re.compile(r"^\s*for\s+(.+?)\s+in\s+(.+?)\s+do\b", re.IGNORECASE)
+_FOR_TO_RE = re.compile(r"^\s*for\s+([A-Za-z_][A-Za-z0-9_]*)\s*:=", re.IGNORECASE)
 
 _RESERVED = {
     "begin",
@@ -26,6 +30,15 @@ _RESERVED = {
     "not",
     "true",
     "false",
+    "function",
+    "return",
+    "try",
+    "except",
+    "do",
+    "to",
+    "in",
+    "nil",
+    "null",
 }
 
 _FUNCTION_SIGNATURES: Dict[str, int] = {
@@ -41,6 +54,20 @@ _FUNCTION_SIGNATURES: Dict[str, int] = {
 
 _FUTURE_HINTS = {"REF", "FUTURE", "LEAD", "FORWARD"}
 
+_BUILTIN_NAMES = {
+    "array",
+    "dupvalue",
+    "eval",
+    "ifnil",
+    "ifarray",
+    "inttodate",
+    "length",
+    "mcols",
+    "mrows",
+    "reindex",
+    "tostn",
+}
+
 
 class TslLinter:
     def lint(self, source: str) -> List[Diagnostic]:
@@ -52,6 +79,40 @@ class TslLinter:
         self._check_type_mix(lines, diagnostics)
         self._check_future_hints(lines, diagnostics)
         return diagnostics
+
+    def _strip_strings(self, text: str) -> str:
+        # TSL homework files often contain non-ASCII labels and date-like text.
+        # Static checks should not treat content inside strings as identifiers.
+        return re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
+
+    def _code_without_comments_or_strings(self, line: str) -> str:
+        return self._strip_strings(line.split("//", 1)[0])
+
+    def _collect_defined_names(self, lines: List[str]) -> Set[str]:
+        defined: Set[str] = {"close", "open", "high", "low", "volume", "date", "time", "true", "false"}
+        defined.update(_BUILTIN_NAMES)
+        for line in lines:
+            code = self._code_without_comments_or_strings(line).strip()
+            fn = _FUNCTION_DEF_RE.match(code)
+            if fn:
+                defined.add(fn.group(1).lower())
+                for arg in self._split_args(fn.group(2)):
+                    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", arg):
+                        defined.add(arg.lower())
+                continue
+            assign = _ASSIGN_RE.match(code)
+            if assign:
+                defined.add(assign.group(1).lower())
+            for_in = _FOR_IN_RE.match(code)
+            if for_in:
+                for name in for_in.group(1).split(","):
+                    name = name.strip()
+                    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
+                        defined.add(name.lower())
+            for_to = _FOR_TO_RE.match(code)
+            if for_to:
+                defined.add(for_to.group(1).lower())
+        return defined
 
     def _extract_calls(self, expr: str) -> List[Tuple[str, str, int]]:
         calls: List[Tuple[str, str, int]] = []
@@ -111,9 +172,12 @@ class TslLinter:
     def _check_block_balance(self, lines: List[str], diagnostics: List[Diagnostic]) -> None:
         balance = 0
         for idx, line in enumerate(lines, start=1):
-            if _BLOCK_BEGIN_RE.search(line):
+            code = self._code_without_comments_or_strings(line)
+            if _BLOCK_BEGIN_RE.search(code):
                 balance += 1
-            if _BLOCK_END_RE.search(line):
+            elif _CONTROL_BLOCK_BEGIN_RE.search(code):
+                balance += 1
+            if _BLOCK_END_RE.search(code):
                 balance -= 1
                 if balance < 0:
                     diagnostics.append(
@@ -138,10 +202,12 @@ class TslLinter:
             )
 
     def _check_variable_usage(self, lines: List[str], diagnostics: List[Diagnostic]) -> None:
-        defined: Set[str] = {"close", "open", "high", "low", "volume", "date", "time", "true", "false"}
+        defined: Set[str] = self._collect_defined_names(lines)
         for idx, line in enumerate(lines, start=1):
-            stripped = line.split("//", 1)[0].strip()
+            stripped = self._code_without_comments_or_strings(line).strip()
             if not stripped:
+                continue
+            if _FUNCTION_DEF_RE.match(stripped):
                 continue
 
             expr_to_check = stripped
@@ -160,6 +226,8 @@ class TslLinter:
                     continue
                 if token.upper() in _FUNCTION_SIGNATURES:
                     continue
+                if lower in _BUILTIN_NAMES:
+                    continue
                 if lower not in defined:
                     diagnostics.append(
                         Diagnostic(
@@ -176,7 +244,8 @@ class TslLinter:
 
     def _check_function_signatures(self, lines: List[str], diagnostics: List[Diagnostic]) -> None:
         for idx, line in enumerate(lines, start=1):
-            for fn, args, start in self._extract_calls(line):
+            code = self._code_without_comments_or_strings(line)
+            for fn, args, start in self._extract_calls(code):
                 fn_upper = fn.upper()
                 if fn_upper not in _FUNCTION_SIGNATURES:
                     continue
@@ -195,10 +264,11 @@ class TslLinter:
 
     def _check_type_mix(self, lines: List[str], diagnostics: List[Diagnostic]) -> None:
         for idx, line in enumerate(lines, start=1):
-            has_bool = re.search(r"\b(true|false)\b", line, re.IGNORECASE)
-            has_date = _DATE_LITERAL_RE.search(line)
-            has_time_token = re.search(r"\b(date|time)\b", line, re.IGNORECASE)
-            has_numeric_op = re.search(r"[+\-*/]", line)
+            code = self._code_without_comments_or_strings(line)
+            has_bool = re.search(r"\b(true|false)\b", code, re.IGNORECASE)
+            has_date = _DATE_LITERAL_RE.search(code)
+            has_time_token = re.search(r"\b(date|time)\b", code, re.IGNORECASE)
+            has_numeric_op = re.search(r"[+\-*/]", code)
             if has_bool and has_numeric_op:
                 diagnostics.append(
                     Diagnostic(
@@ -232,7 +302,7 @@ class TslLinter:
 
     def _check_future_hints(self, lines: List[str], diagnostics: List[Diagnostic]) -> None:
         for idx, line in enumerate(lines, start=1):
-            upper_line = line.upper()
+            upper_line = self._code_without_comments_or_strings(line).upper()
             if any(hint in upper_line for hint in _FUTURE_HINTS):
                 if re.search(r"REF\s*\([^,]+,\s*-\d+\s*\)", upper_line):
                     diagnostics.append(
