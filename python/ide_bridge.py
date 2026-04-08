@@ -9,10 +9,11 @@ from tsl_validation.adapters.pytsl_adapter import PyTSLAdapter
 from tsl_validation.cli import _load_case, _load_task
 from tsl_validation.linting import TslLinter
 from tsl_validation.runner import run_validation
+from tsl_validation.textio import read_text_auto
 
 
 def run_tsl_check(tsl_file: str) -> dict:
-    source = Path(tsl_file).read_text(encoding="utf-8")
+    source = read_text_auto(tsl_file)
     diagnostics = [d.__dict__ for d in TslLinter().lint(source)]
     return {
         "command": "Run TSL Check",
@@ -32,7 +33,7 @@ def run_validation_command(
     mode: str,
     lint_policy: str,
 ) -> dict:
-    source = Path(tsl_file).read_text(encoding="utf-8")
+    source = read_text_auto(tsl_file)
     result = run_validation(
         tsl_source=source,
         case=_load_case(case_file),
@@ -86,7 +87,7 @@ def show_diff_report(report_file: str) -> dict:
         "command": "Show Diff Report",
         "file": str(p),
         "exists": p.exists(),
-        "preview": p.read_text(encoding="utf-8")[:800] if p.exists() else "",
+        "preview": read_text_auto(p)[:800] if p.exists() else "",
     }
     if j.exists():
         payload["json_report"] = str(j)
@@ -110,7 +111,7 @@ def _preview_prompt(payload: Dict[str, Any]) -> str:
 
 
 def ask_ai_to_fix(tsl_file: str, report_file: str) -> dict:
-    source = Path(tsl_file).read_text(encoding="utf-8")
+    source = read_text_auto(tsl_file)
     report_json_path = Path(report_file).with_suffix(".json")
     report_json: Dict[str, Any] = {}
     if report_json_path.exists():

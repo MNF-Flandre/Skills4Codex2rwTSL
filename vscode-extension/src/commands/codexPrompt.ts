@@ -21,6 +21,42 @@ function modeActionRequest(mode: HandoffMode): string {
   return 'Continue from existing report, propose next patch, and prioritize highest-signal checks.';
 }
 
+function localWorkbenchInstructions(): string[] {
+  return [
+    'Use the local TSL Workbench integration for validation and debugging. Do not request an OpenAI API key for this workflow.',
+    'If a workspace context file exists at `.tsl-workbench/CODEX_TSL_WORKBENCH_CONTEXT.md`, read it before editing TSL code.',
+    'Prefer TSL Workbench commands: Run Preflight, Run Lint, Run Smoke, and then Oracle only when a real reference source exists.',
+  ];
+}
+
+function formatSkillDocs(payload: unknown): string[] {
+  if (!payload || typeof payload !== 'object') {
+    return [
+      'Bundled docs: not discovered. If available, inspect resources/tsl-docs in the extension install directory.',
+    ];
+  }
+
+  const data = payload as Record<string, unknown>;
+  const docsRoot = String(data.docs_root ?? '');
+  const files = Array.isArray(data.files) ? data.files : [];
+  const lines = [
+    'Before changing TSL, read the bundled skill and Tinysoft docs when the task touches syntax, functions, runtime behavior, or debugging.',
+  ];
+  if (docsRoot) {
+    lines.push(`Docs root: ${docsRoot}`);
+  }
+  for (const file of files) {
+    if (!file || typeof file !== 'object') {
+      continue;
+    }
+    const item = file as Record<string, unknown>;
+    const label = String(item.label ?? item.path ?? 'doc');
+    const docPath = String(item.path ?? '');
+    lines.push(`- ${label}: ${docPath}`);
+  }
+  return lines;
+}
+
 export function buildCodexPrompt(mode: HandoffMode, payload: Record<string, unknown>, style: PromptStyle): string {
   const source = String(payload.source ?? '');
   const diagnostics = payload.diagnostics ?? [];
@@ -38,6 +74,7 @@ export function buildCodexPrompt(mode: HandoffMode, payload: Record<string, unkn
   const minimalRepro = JSON.stringify(payload.minimal_repro_case ?? {});
   const objective = modeObjective(mode);
   const actionRequest = modeActionRequest(mode);
+  const skillDocs = formatSkillDocs(payload.skill_docs);
 
   if (style === 'concise') {
     return [
@@ -50,6 +87,12 @@ export function buildCodexPrompt(mode: HandoffMode, payload: Record<string, unkn
       `Mismatch: ${mismatchFields}`,
       `Summary: ${diffSummary}`,
       `Next: ${suggested}`,
+      '',
+      '## TSL Skill Docs',
+      ...skillDocs,
+      '',
+      '## Local TSL Workbench',
+      ...localWorkbenchInstructions(),
       '',
       '## Selected/Current TSL Source',
       '```tsl',
@@ -79,19 +122,25 @@ export function buildCodexPrompt(mode: HandoffMode, payload: Record<string, unkn
     `Runtime errors: ${runtimeErrors}`,
     `Suggested next action: ${suggested}`,
     '',
-    '## 4) Lint Diagnostics',
+    '## 4) TSL Skill / Technical Docs',
+    ...skillDocs,
+    '',
+    '## 5) Local TSL Workbench',
+    ...localWorkbenchInstructions(),
+    '',
+    '## 6) Lint Diagnostics',
     JSON.stringify(diagnostics, null, 2),
     '',
-    '## 5) Runtime Intermediate Trace',
+    '## 7) Runtime Intermediate Trace',
     trace,
     '',
-    '## 6) Runtime Final Env',
+    '## 8) Runtime Final Env',
     finalEnv,
     '',
-    '## 7) Minimal Repro Case',
+    '## 9) Minimal Repro Case',
     minimalRepro,
     '',
-    '## 8) Current TSL Source',
+    '## 10) Current TSL Source',
     '```tsl',
     source,
     '```',

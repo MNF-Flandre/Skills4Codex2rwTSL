@@ -61,16 +61,6 @@
 ```json
 [
   {
-    "severity": "error",
-    "code": "TSL002",
-    "message": "Block likely missing closing 'end'.",
-    "range": [
-      6,
-      1
-    ],
-    "suggestion": "Add missing 'end' for opened blocks."
-  },
-  {
     "severity": "warning",
     "code": "TSL010",
     "message": "Variable 'y' may be used before assignment.",

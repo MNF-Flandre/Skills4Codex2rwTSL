@@ -15,6 +15,8 @@ export function normalizeValidationAdapter(adapter: string): ValidationAdapter {
 }
 
 export function normalizeConnectionMode(mode: string): ConnectionMode {
-  return mode === 'remote_api' ? 'remote_api' : 'local_client_bridge';
+  if (mode === 'remote_api' || mode === 'local_client_bridge') {
+    return mode;
+  }
+  return 'auto';
 }
-

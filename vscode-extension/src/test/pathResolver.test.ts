@@ -36,7 +36,7 @@ test('PathResolver resolves relative report path against workspace', () => {
     configuredBackendRoot: tmp,
     pythonModulePath: 'python',
   });
-  assert.equal(resolver.resolveValidationReportPath('reports/latest.md'), path.normalize('/workspace/reports/latest.md'));
+  assert.equal(resolver.resolveValidationReportPath('reports/latest.md'), path.normalize(path.resolve('/workspace', 'reports/latest.md')));
 });
 
 test('PathResolver throws clear error when backend not found', () => {
@@ -66,6 +66,22 @@ test('PathResolver auto mode detects workspace backend root', () => {
   const summary = resolver.getBackendSummary();
   assert.equal(summary.discoverySource, 'workspace');
   assert.equal(summary.effectiveMode, 'repo_attached_mode');
+});
+
+test('PathResolver auto mode detects bundled extension backend root', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsl-ext-workspace-'));
+  const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsl-ext-installed-'));
+  const bundledBackend = path.join(extensionRoot, 'resources', 'tsl-backend');
+  makeBackendRoot(bundledBackend);
+  const resolver = new PathResolver({
+    workspaceRoot,
+    extensionPath: extensionRoot,
+    backendMode: 'auto',
+    configuredBackendRoot: '',
+    pythonModulePath: 'python',
+  });
+  assert.equal(resolver.getBackendRoot(), bundledBackend);
+  assert.equal(resolver.getBackendSummary().effectiveMode, 'repo_attached_mode');
 });
 
 test('PathResolver repo_attached_mode can use configured relative root', () => {

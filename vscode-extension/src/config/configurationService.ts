@@ -79,36 +79,53 @@ export class ConfigurationService {
 
   public async updateConnectionProfile(profile: Omit<ConnectionProfile, 'hasPassword'>): Promise<void> {
     const cfg = vscode.workspace.getConfiguration('tslWorkbench');
+    const target = this.getConfigurationTarget();
     await Promise.all([
-      cfg.update('connection.host', profile.host, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.port', profile.port, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.username', profile.username, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.mode', profile.mode, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.sdkPath', profile.sdkPath, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.localClientPath', profile.localClientPath, vscode.ConfigurationTarget.Workspace),
+      cfg.update('connection.host', profile.host, target),
+      cfg.update('connection.port', profile.port, target),
+      cfg.update('connection.username', profile.username, target),
+      cfg.update('connection.mode', profile.mode, target),
+      cfg.update('connection.sdkPath', profile.sdkPath, target),
+      cfg.update('connection.localClientPath', profile.localClientPath, target),
     ]);
   }
 
   public async resetConnectionSettings(): Promise<void> {
     const cfg = vscode.workspace.getConfiguration('tslWorkbench');
+    const target = this.getConfigurationTarget();
     await Promise.all([
-      cfg.update('connection.host', '', vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.port', 0, vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.username', '', vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.mode', 'local_client_bridge', vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.sdkPath', '', vscode.ConfigurationTarget.Workspace),
-      cfg.update('connection.localClientPath', '', vscode.ConfigurationTarget.Workspace),
+      cfg.update('connection.host', '', target),
+      cfg.update('connection.port', 0, target),
+      cfg.update('connection.username', '', target),
+      cfg.update('connection.mode', 'auto', target),
+      cfg.update('connection.sdkPath', '', target),
+      cfg.update('connection.localClientPath', '', target),
     ]);
     await this.clearPassword();
   }
 
   public async updateBackendRoot(backendRoot: string): Promise<void> {
     const cfg = vscode.workspace.getConfiguration('tslWorkbench');
-    await cfg.update('backend.root', backendRoot.trim(), vscode.ConfigurationTarget.Workspace);
+    await cfg.update('backend.root', backendRoot.trim(), this.getConfigurationTarget());
+  }
+
+  public async updateBackendMode(mode: BackendMode): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration('tslWorkbench');
+    await cfg.update('backend.mode', mode, this.getConfigurationTarget());
+  }
+
+  public async updateBackendPythonModulePath(modulePath: string): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration('tslWorkbench');
+    await cfg.update('backend.pythonModulePath', modulePath.trim() || 'python', this.getConfigurationTarget());
+  }
+
+  public async updatePythonPath(pythonPath: string): Promise<void> {
+    const cfg = vscode.workspace.getConfiguration('tslWorkbench');
+    await cfg.update('pythonPath', pythonPath.trim() || 'python', this.getConfigurationTarget());
   }
 
   private getConnectionMode(): ConnectionMode {
-    return normalizeConnectionMode(this.getString('connection.mode', 'local_client_bridge'));
+    return normalizeConnectionMode(this.getString('connection.mode', 'auto'));
   }
 
   private getString(key: string, defaultValue: string): string {
@@ -118,5 +135,9 @@ export class ConfigurationService {
   private getNumber(key: string, defaultValue: number): number {
     const value = Number(vscode.workspace.getConfiguration('tslWorkbench').get(key, defaultValue));
     return Number.isFinite(value) ? value : defaultValue;
+  }
+
+  private getConfigurationTarget(): vscode.ConfigurationTarget {
+    return vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
   }
 }

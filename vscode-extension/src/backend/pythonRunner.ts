@@ -29,6 +29,17 @@ export class PythonBackendRunner {
     return this.runCli<PreflightPayload>(['-m', 'tsl_validation.cli', 'preflight', '--case', smokeCase]);
   }
 
+  public async probeTslPyRuntime(sdkPath?: string, writePth = false): Promise<Record<string, unknown>> {
+    const args = ['-m', 'tsl_validation.cli', 'tslpy-runtime'];
+    if (sdkPath) {
+      args.push('--sdk-path', sdkPath);
+    }
+    if (writePth) {
+      args.push('--write-pth');
+    }
+    return this.runCli<Record<string, unknown>>(args);
+  }
+
   public getPreflightCasePath(): string {
     return this.pathResolver.resolveValidationCasePath('smoke', this.configuration.getValidationCasePath('smoke'));
   }
@@ -119,6 +130,7 @@ export class PythonBackendRunner {
 
     const mode = await vscode.window.showQuickPick(
       [
+        { label: 'auto', detail: 'Try local bridge first and fallback to remote API when needed.' },
         { label: 'local_client_bridge', detail: 'Use local Tinysoft client bridge installed on this machine.' },
         { label: 'remote_api', detail: 'Connect to remote API endpoint with credentials.' },
       ],
@@ -228,7 +240,7 @@ export class PythonBackendRunner {
 
     this.output.appendLine(`$ ${pythonPath} ${args.join(' ')}`);
 
-    const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    const result = await new Promise<{ stdout: string; stderr: string; errorMessage: string }>((resolve) => {
       const execOptions = buildRunnerExecOptions(backendRoot);
       execFile(
         pythonPath,
@@ -240,11 +252,7 @@ export class PythonBackendRunner {
           maxBuffer: execOptions.maxBuffer,
         },
         (error, stdout, stderr) => {
-          if (error) {
-            reject(new Error(formatRunnerExecError(error.message, stderr ?? '', stdout ?? '')));
-            return;
-          }
-          resolve({ stdout: stdout ?? '', stderr: stderr ?? '' });
+          resolve({ stdout: stdout ?? '', stderr: stderr ?? '', errorMessage: error?.message ?? '' });
         }
       );
     });
@@ -252,10 +260,35 @@ export class PythonBackendRunner {
     if (result.stderr.trim()) {
       this.output.appendLine(result.stderr.trim());
     }
-    if (result.stdout.trim()) {
-      this.output.appendLine(result.stdout.trim());
+    if (!result.stdout.trim()) {
+      if (result.errorMessage) {
+        throw new Error(formatRunnerExecError(result.errorMessage, result.stderr ?? '', result.stdout ?? ''));
+      }
+      throw new Error('Backend returned empty output.');
     }
 
-    return parseJsonPayload<T>(result.stdout);
+    let payload: T;
+    try {
+      payload = parseJsonPayload<T>(result.stdout);
+    } catch (error) {
+      if (result.stdout.trim()) {
+        this.output.appendLine(result.stdout.trim());
+      }
+      if (result.errorMessage) {
+        throw new Error(formatRunnerExecError(result.errorMessage, result.stderr ?? '', result.stdout ?? ''));
+      }
+      throw error;
+    }
+
+    const status = (payload as any)?.status ?? 'ok';
+    const command = (payload as any)?.command ?? 'backend';
+    const failureKind = (payload as any)?.failure_kind ? ` failure=${(payload as any).failure_kind}` : '';
+    const mode = (payload as any)?.mode ? ` mode=${(payload as any).mode}` : '';
+    this.output.appendLine(`[backend] ${command} status=${status}${mode}${failureKind}`);
+
+    if (status === 'error') {
+      throw new Error(String((payload as any)?.error || result.errorMessage || 'Backend returned error status.'));
+    }
+    return payload;
   }
 }

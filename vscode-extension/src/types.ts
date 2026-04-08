@@ -1,7 +1,7 @@
 export type ValidationMode = 'smoke' | 'spec' | 'oracle';
 export type ValidationAdapter = 'auto' | 'mock' | 'pytsl';
 export type BackendMode = 'auto' | 'repo_attached_mode' | 'external_workspace_mode';
-export type ConnectionMode = 'remote_api' | 'local_client_bridge';
+export type ConnectionMode = 'auto' | 'remote_api' | 'local_client_bridge';
 export type RuntimeStatus = 'unknown' | 'ready' | 'pass' | 'fail' | 'blocked' | 'not_configured';
 
 export interface LintDiagnostic {
@@ -42,6 +42,7 @@ export interface ValidationPayload {
   runtime_stage?: string;
   result: {
     diagnostics?: LintDiagnostic[];
+    tsl_output?: Record<string, unknown>;
     metadata?: Record<string, unknown>;
     diff_report?: {
       summary?: string;

@@ -4,6 +4,7 @@ import { PythonBackendRunner } from '../backend/pythonRunner';
 import { ensureFileExists } from '../backend/runnerUtils';
 import { ExtensionRuntimeState, LintDiagnostic, ValidationMode } from '../types';
 import {
+  formatTslOutputTables,
   suggestPreflightNextAction,
   suggestValidationNextAction,
   summarizePreflightFailure,
@@ -84,6 +85,8 @@ export async function runValidationMode(
   state.statusBarSummary = payload.status === 'pass' ? `$(check) TSL ${mode} Passed` : `$(error) TSL ${mode} Failed`;
 
   output.appendLine(`Validation ${mode} ${payload.status}: ${filePath}`);
+  output.appendLine(formatTslOutputTables(payload));
+  output.show(true);
 
   const msg = `TSL ${mode} ${payload.status} (${payload.failure_kind || 'none'})`;
   if (payload.status === 'pass') {

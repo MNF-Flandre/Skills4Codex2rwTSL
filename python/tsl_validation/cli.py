@@ -9,6 +9,8 @@ from tsl_validation.adapters.pytsl_adapter import PyTSLAdapter
 from tsl_validation.linting import TslLinter
 from tsl_validation.runner import run_validation
 from tsl_validation.schemas import TaskSpec, ValidationCase
+from tsl_validation.textio import read_text_auto
+from tsl_validation.tslpy_runtime import run as run_tslpy_runtime
 
 
 EXIT_OK = 0
@@ -18,7 +20,7 @@ EXIT_CONFIG_ERROR = 3
 
 
 def _read_text(path: str) -> str:
-    return Path(path).read_text(encoding="utf-8")
+    return read_text_auto(path)
 
 
 def _load_case(path: str) -> ValidationCase:
@@ -64,6 +66,12 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return EXIT_OK if payload["status"] == "pass" else EXIT_VALIDATION_ERROR
+
+
+def cmd_tslpy_runtime(args: argparse.Namespace) -> int:
+    payload = run_tslpy_runtime(args)
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return EXIT_OK if payload.get("status") == "pass" else EXIT_VALIDATION_ERROR
 
 
 def _code_for_result(status: str, failure_kind: str) -> int:
@@ -121,6 +129,14 @@ def build_parser() -> argparse.ArgumentParser:
     preflight = sub.add_parser("preflight", help="Run pyTSL preflight checks for live runtime readiness")
     preflight.add_argument("--case", required=True, help="Path to validation case JSON")
     preflight.set_defaults(func=cmd_preflight)
+
+    runtime = sub.add_parser("tslpy-runtime", help="Probe and optionally bind a local TSLPy runtime directory")
+    runtime.add_argument("--sdk-path", action="append", default=[], help="Candidate Tinysoft/AnalyseNG directory containing TSLPy*.pyd")
+    runtime.add_argument("--search-root", action="append", default=[], help="Directory to scan for TSLPy*.pyd")
+    runtime.add_argument("--max-depth", type=int, default=1, help="Max search depth for --search-root")
+    runtime.add_argument("--module", default="", help="Expected module name, e.g. TSLPy312")
+    runtime.add_argument("--write-pth", action="store_true", help="Write a user site-packages .pth file for the first importable SDK path")
+    runtime.set_defaults(func=cmd_tslpy_runtime)
 
     validate = sub.add_parser("validate", help="Run validation with adapter + diff report")
     validate.add_argument("file", help="Path to .tsl source")

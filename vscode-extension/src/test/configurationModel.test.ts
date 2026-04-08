@@ -15,7 +15,8 @@ test('normalizeValidationAdapter handles allowed and fallback values', () => {
 });
 
 test('normalizeConnectionMode handles allowed and fallback values', () => {
+  assert.equal(normalizeConnectionMode('auto'), 'auto');
   assert.equal(normalizeConnectionMode('remote_api'), 'remote_api');
-  assert.equal(normalizeConnectionMode('anything_else'), 'local_client_bridge');
+  assert.equal(normalizeConnectionMode('local_client_bridge'), 'local_client_bridge');
+  assert.equal(normalizeConnectionMode('anything_else'), 'auto');
 });
-

@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+reports/**
 src/**
 tsconfig.json
 out/test/**
@@ -8,3 +9,5 @@ test-fixtures/**
 **/*.map
 node_modules/.cache/**
 README.dev.md
+*.vsix
+.gitignore

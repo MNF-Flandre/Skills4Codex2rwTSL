@@ -77,6 +77,7 @@ export class PathResolver {
     const configured = this.input.configuredBackendRoot ? this.resolveConfiguredRoot(this.input.configuredBackendRoot) : '';
     const workspace = this.input.workspaceRoot || '';
     const extensionParent = path.resolve(this.input.extensionPath, '..');
+    const bundledBackend = path.join(this.input.extensionPath, 'resources', 'tsl-backend');
 
     if (mode === 'external_workspace_mode') {
       if (!configured) {
@@ -88,7 +89,7 @@ export class PathResolver {
     }
 
     if (mode === 'repo_attached_mode') {
-      const candidates = [configured, workspace, extensionParent].filter(Boolean);
+      const candidates = [configured, workspace, bundledBackend, extensionParent].filter(Boolean);
       for (const candidate of candidates) {
         if (this.isBackendRoot(candidate)) {
           return this.ensureBackend(candidate, mode, candidate === configured ? 'configured' : candidate === workspace ? 'workspace' : 'extension_parent');
@@ -97,10 +98,10 @@ export class PathResolver {
       throw new Error('repo_attached_mode requires a backend root with python/ide_bridge.py and python/tsl_validation/cli.py.');
     }
 
-    const autoCandidates = [configured, workspace, extensionParent].filter(Boolean);
+    const autoCandidates = [configured, workspace, bundledBackend, extensionParent].filter(Boolean);
     for (const candidate of autoCandidates) {
       if (this.isBackendRoot(candidate)) {
-        const source = candidate === configured ? 'configured' : candidate === workspace ? 'workspace' : 'extension_parent';
+        const source = candidate === configured ? 'configured' : candidate === workspace ? 'workspace' : candidate === bundledBackend ? 'extension_parent' : 'extension_parent';
         const effectiveMode = source === 'workspace' || source === 'extension_parent' ? 'repo_attached_mode' : 'external_workspace_mode';
         return this.ensureBackend(candidate, mode, source, effectiveMode);
       }
@@ -147,4 +148,3 @@ export class PathResolver {
     return REQUIRED_MARKERS.every((marker) => fs.existsSync(path.join(candidate, marker)));
   }
 }
-

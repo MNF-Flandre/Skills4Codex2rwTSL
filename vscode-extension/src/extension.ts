@@ -7,15 +7,11 @@ import {
   askCodexFixCurrentFile,
   askCodexHandOffSelection,
 } from './commands/codexHandoff';
+import { prepareCodexWorkspaceContext } from './commands/codexWorkspaceContext';
 import { runDiagnosticWizard } from './commands/diagnosticWizard';
+import { installTslPyRuntime } from './commands/installTslPyRuntime';
 import { openLastReport, runLintCurrentFile, runPreflight, runValidationMode } from './commands/runValidation';
-import {
-  buildStartupGuidance,
-  STARTUP_ACTION_CONFIGURE_CONNECTION,
-  STARTUP_ACTION_OPEN_SETTINGS,
-  STARTUP_ACTION_RUN_PREFLIGHT,
-  StartupAction,
-} from './onboarding/startupGuidance';
+import { runSetupWizard } from './commands/setupWizard';
 import { PathResolver } from './services/pathResolver';
 import { ExtensionRuntimeState } from './types';
 import { TslWorkbenchProvider } from './views/tslWorkbenchProvider';
@@ -24,58 +20,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const output = vscode.window.createOutputChannel('TSL Workbench');
   const diagnostics = vscode.languages.createDiagnosticCollection('tsl-validation');
-
   const configuration = new ConfigurationService(context.secrets);
-  let pathResolver: PathResolver;
-  try {
-    pathResolver = new PathResolver({
-      workspaceRoot,
-      extensionPath: context.extensionPath,
-      backendMode: configuration.getBackendMode(),
-      configuredBackendRoot: configuration.getBackendRoot(),
-      pythonModulePath: configuration.getBackendPythonModulePath(),
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const action = await vscode.window.showWarningMessage(
-      `TSL Workbench backend discovery failed: ${message}`,
-      'Open Settings'
-    );
-    if (action === 'Open Settings') {
-      await vscode.commands.executeCommand('workbench.action.openSettings', 'tslWorkbench.backend.root');
-    }
-    return;
-  }
+
+  let pathResolver: PathResolver | undefined;
+  let runner: PythonBackendRunner | undefined;
+  let lastDiscoveryError = '';
 
   const state: ExtensionRuntimeState = {
     connectionSummary: 'not configured',
-    backendSummary: summarizeBackend(pathResolver),
+    backendSummary: 'setup required',
     preflightStatus: 'unknown',
     validationStatus: 'unknown',
     lastValidationMode: '',
     lastFailureKind: 'none',
-    lastReportPath: pathResolver.resolveValidationReportPath(configuration.getValidationReportPath()),
+    lastReportPath: '',
     lastFilePath: '',
     codexHandoffStatus: 'idle',
-    statusBarSummary: '$(circle-slash) TSL Not configured',
+    statusBarSummary: '$(warning) TSL Setup required',
   };
-
-  const runner = new PythonBackendRunner(output, configuration, pathResolver);
-  const profile = await runner.getConnectionProfile();
-  state.connectionSummary = await runner.getConnectionSummary();
-  const hint = await runner.getConnectionHint();
-  const startup = buildStartupGuidance({
-    hasWorkspace: Boolean(workspaceRoot),
-    connectionHint: hint === 'ready' ? 'ready' : hint === 'blocked' ? 'blocked' : 'not_configured',
-    hasPassword: profile.hasPassword,
-    host: profile.host,
-    port: profile.port,
-  });
-  state.statusBarSummary = startup.statusBarSummary;
 
   const provider = new TslWorkbenchProvider(state);
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBar.command = 'tslWorkbench.runPreflight';
+  statusBar.command = 'tslWorkbench.configureConnection';
   statusBar.text = state.statusBarSummary;
   statusBar.tooltip = 'TSL Workbench status';
   statusBar.show();
@@ -91,95 +57,226 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const refreshUi = () => {
     provider.refresh();
     statusBar.text = state.statusBarSummary;
+    statusBar.command = runner ? 'tslWorkbench.runPreflight' : 'tslWorkbench.configureConnection';
     statusBar.color = state.statusBarSummary.includes('Failed')
       ? new vscode.ThemeColor('errorForeground')
-      : state.statusBarSummary.includes('Ready')
+      : state.statusBarSummary.includes('Ready') || state.statusBarSummary.includes('Passed')
         ? new vscode.ThemeColor('charts.green')
         : undefined;
   };
 
-  context.subscriptions.push(
-    registerSafeCommand('tslWorkbench.configureConnection', output, async () => {
-      await runner.configureConnectionInteractive();
+  const rebuildRuntime = async (showError: boolean): Promise<boolean> => {
+    try {
+      pathResolver = new PathResolver({
+        workspaceRoot,
+        extensionPath: context.extensionPath,
+        backendMode: configuration.getBackendMode(),
+        configuredBackendRoot: configuration.getBackendRoot(),
+        pythonModulePath: configuration.getBackendPythonModulePath(),
+      });
+      runner = new PythonBackendRunner(output, configuration, pathResolver);
+      lastDiscoveryError = '';
+      state.backendSummary = summarizeBackend(pathResolver);
+      state.lastReportPath = pathResolver.resolveValidationReportPath(configuration.getValidationReportPath());
       state.connectionSummary = await runner.getConnectionSummary();
-      state.statusBarSummary = (await runner.getConnectionHint()) === 'ready' ? '$(check) TSL Ready' : '$(warning) TSL Config incomplete';
+      const hint = await runner.getConnectionHint();
+      state.statusBarSummary =
+        hint === 'ready'
+          ? '$(check) TSL Ready'
+          : hint === 'blocked'
+            ? '$(warning) TSL Config incomplete'
+            : '$(warning) TSL Setup required';
+      refreshUi();
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      runner = undefined;
+      pathResolver = undefined;
+      lastDiscoveryError = message;
+      state.backendSummary = `setup required (${message})`;
+      state.connectionSummary = 'backend not discovered';
+      state.lastReportPath = '';
+      state.statusBarSummary = '$(warning) TSL Setup required';
+      output.appendLine(`[setup] Backend discovery pending: ${message}`);
+      refreshUi();
+      if (showError) {
+        vscode.window.showWarningMessage(`TSL Workbench setup is incomplete: ${message}`, 'Start Setup').then((action) => {
+          if (action === 'Start Setup') {
+            void vscode.commands.executeCommand('tslWorkbench.configureConnection');
+          }
+        });
+      }
+      return false;
+    }
+  };
+
+  const ensureRunnerInteractive = async (): Promise<PythonBackendRunner> => {
+    if (runner) {
+      return runner;
+    }
+    await rebuildRuntime(false);
+    if (runner) {
+      return runner;
+    }
+    const action = await vscode.window.showInformationMessage(
+      `TSL Workbench needs one-time setup before running commands.${lastDiscoveryError ? `\n${lastDiscoveryError}` : ''}`,
+      { modal: false },
+      'Start Setup',
+      'Cancel'
+    );
+    if (action !== 'Start Setup') {
+      throw new Error('TSL Workbench setup is required.');
+    }
+    const saved = await runSetupWizard(configuration, { workspaceRoot, extensionPath: context.extensionPath, output });
+    if (!saved) {
+      throw new Error('TSL Workbench setup was cancelled.');
+    }
+    await rebuildRuntime(true);
+    if (!runner) {
+      throw new Error(`TSL backend is still unavailable.${lastDiscoveryError ? ` ${lastDiscoveryError}` : ''}`);
+    }
+    return runner;
+  };
+
+  const ensureRunnerAndResolver = async (): Promise<{ runner: PythonBackendRunner; resolver: PathResolver }> => {
+    const liveRunner = await ensureRunnerInteractive();
+    if (!pathResolver) {
+      throw new Error('TSL backend resolver is unavailable. Run TSL: Configure Connection.');
+    }
+    return { runner: liveRunner, resolver: pathResolver };
+  };
+
+  context.subscriptions.push(
+    registerSafeCommand('tslWorkbench.runSetupWizard', output, async () => {
+      const saved = await runSetupWizard(configuration, { workspaceRoot, extensionPath: context.extensionPath, output });
+      if (!saved) {
+        return;
+      }
+      await rebuildRuntime(true);
+      if (runner) {
+        state.connectionSummary = await runner.getConnectionSummary();
+      }
+      refreshUi();
+    }),
+    registerSafeCommand('tslWorkbench.configureConnection', output, async () => {
+      const saved = await runSetupWizard(configuration, { workspaceRoot, extensionPath: context.extensionPath, output });
+      if (!saved) {
+        return;
+      }
+      await rebuildRuntime(true);
+      if (runner) {
+        state.connectionSummary = await runner.getConnectionSummary();
+      }
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.runPreflight', output, async () => {
-      await runPreflight(runner, state, output);
+      const liveRunner = await ensureRunnerInteractive();
+      await runPreflight(liveRunner, state, output);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.runLintCurrentFile', output, async (targetUri?: vscode.Uri) => {
-      await runLintCurrentFile(runner, diagnostics, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await runLintCurrentFile(liveRunner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.runSmokeCurrentFile', output, async (targetUri?: vscode.Uri) => {
-      await runValidationMode('smoke', runner, diagnostics, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await runValidationMode('smoke', liveRunner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.runSpecCurrentFile', output, async (targetUri?: vscode.Uri) => {
-      await runValidationMode('spec', runner, diagnostics, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await runValidationMode('spec', liveRunner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.runOracleCurrentFile', output, async (targetUri?: vscode.Uri) => {
-      await runValidationMode('oracle', runner, diagnostics, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await runValidationMode('oracle', liveRunner, diagnostics, state, output, targetUri);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.openLastReport', output, async () => {
       await openLastReport(state);
     }),
     registerSafeCommand('tslWorkbench.askCodexFixCurrentFile', output, async (targetUri?: vscode.Uri) => {
-      await askCodexFixCurrentFile(runner, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await askCodexFixCurrentFile(liveRunner, state, output, targetUri, context.extensionPath);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.askCodexExplainCurrentError', output, async (targetUri?: vscode.Uri) => {
-      await askCodexExplainCurrentError(runner, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await askCodexExplainCurrentError(liveRunner, state, output, targetUri, context.extensionPath);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.askCodexContinueFromReport', output, async (targetUri?: vscode.Uri) => {
-      await askCodexContinueFromReport(runner, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await askCodexContinueFromReport(liveRunner, state, output, targetUri, context.extensionPath);
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.askCodexHandOffSelection', output, async (targetUri?: vscode.Uri) => {
-      await askCodexHandOffSelection(runner, state, output, targetUri);
+      const liveRunner = await ensureRunnerInteractive();
+      await askCodexHandOffSelection(liveRunner, state, output, targetUri, context.extensionPath);
+      refreshUi();
+    }),
+    registerSafeCommand('tslWorkbench.prepareCodexContext', output, async (targetUri?: vscode.Uri) => {
+      const runtime = await ensureRunnerAndResolver();
+      await prepareCodexWorkspaceContext({
+        runner: runtime.runner,
+        configuration,
+        resolver: runtime.resolver,
+        state,
+        output,
+        extensionPath: context.extensionPath,
+        targetUri,
+      });
+      refreshUi();
+    }),
+    registerSafeCommand('tslWorkbench.installTslPyRuntime', output, async () => {
+      const liveRunner = await ensureRunnerInteractive();
+      await installTslPyRuntime(liveRunner, configuration, output);
+      state.connectionSummary = await liveRunner.getConnectionSummary();
+      state.statusBarSummary = '$(check) TSLPy Runtime Checked';
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.clearStoredPassword', output, async () => {
-      await runner.clearStoredPassword();
-      state.connectionSummary = await runner.getConnectionSummary();
+      await configuration.clearPassword();
+      await rebuildRuntime(false);
       state.statusBarSummary = '$(warning) TSL Config incomplete';
       vscode.window.showInformationMessage('TSL password removed from SecretStorage.');
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.resetConnection', output, async () => {
-      await runner.resetConnectionConfiguration();
-      state.connectionSummary = await runner.getConnectionSummary();
-      state.statusBarSummary = '$(circle-slash) TSL Not configured';
+      await configuration.resetConnectionSettings();
+      await rebuildRuntime(false);
+      state.statusBarSummary = runner ? '$(warning) TSL Setup required' : '$(warning) TSL Setup required';
       vscode.window.showInformationMessage('TSL connection settings reset.');
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.revealConnectionSummary', output, async () => {
+      const runtime = await ensureRunnerAndResolver();
       const summary = [
-        `Connection: ${await runner.getConnectionSummary()}`,
-        `Backend: ${summarizeBackend(pathResolver)}`,
-        `Report path: ${runner.getLastReportPath()}`,
+        `Connection: ${await runtime.runner.getConnectionSummary()}`,
+        `Backend: ${summarizeBackend(runtime.resolver)}`,
+        `Report path: ${runtime.runner.getLastReportPath()}`,
       ].join('\n');
       vscode.window.showInformationMessage(summary, { modal: false });
     }),
     registerSafeCommand('tslWorkbench.runDiagnosticWizard', output, async () => {
-      await runDiagnosticWizard(runner, configuration, pathResolver, state, output);
+      const runtime = await ensureRunnerAndResolver();
+      await runDiagnosticWizard(runtime.runner, configuration, runtime.resolver, state, output);
       state.statusBarSummary = state.statusBarSummary.includes('Failed')
         ? state.statusBarSummary
         : '$(tools) TSL Diagnostics Updated';
       refreshUi();
     }),
     registerSafeCommand('tslWorkbench.refreshSidebar', output, async () => {
+      await rebuildRuntime(false);
       refreshUi();
     })
   );
 
+  await rebuildRuntime(false);
   output.appendLine('TSL Workbench activated.');
-  void showStartupGuidanceOnce(context, startup.message, startup.actions);
+  void showStartupSetupOnce(context, runner !== undefined);
 }
 
 export function deactivate(): void {}
@@ -208,24 +305,23 @@ function registerSafeCommand(
   });
 }
 
-async function showStartupGuidanceOnce(
-  context: vscode.ExtensionContext,
-  message: string,
-  actions: StartupAction[]
-): Promise<void> {
-  const key = 'tslWorkbench.startupGuidance.v1';
+async function showStartupSetupOnce(context: vscode.ExtensionContext, isReady: boolean): Promise<void> {
+  if (isReady) {
+    return;
+  }
+  const key = 'tslWorkbench.setupWizardPrompt.v1';
   if (context.workspaceState.get<boolean>(key)) {
     return;
   }
-  const action = await vscode.window.showInformationMessage(message, ...actions);
-  if (action === STARTUP_ACTION_CONFIGURE_CONNECTION) {
-    await vscode.commands.executeCommand('tslWorkbench.configureConnection');
-  } else if (action === STARTUP_ACTION_RUN_PREFLIGHT) {
-    await vscode.commands.executeCommand('tslWorkbench.runPreflight');
-  } else if (action === STARTUP_ACTION_OPEN_SETTINGS) {
-    await vscode.commands.executeCommand('workbench.action.openSettings', 'tslWorkbench');
-  }
+  const action = await vscode.window.showInformationMessage(
+    'TSL Workbench needs a one-time setup: backend root, connection mode, Python path, then host/login.',
+    'Start Setup',
+    'Later'
+  );
   await context.workspaceState.update(key, true);
+  if (action === 'Start Setup') {
+    await vscode.commands.executeCommand('tslWorkbench.configureConnection');
+  }
 }
 
 class TslCodeLensProvider implements vscode.CodeLensProvider {

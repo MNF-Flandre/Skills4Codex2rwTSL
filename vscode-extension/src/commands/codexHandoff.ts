@@ -12,36 +12,40 @@ export async function askCodexFixCurrentFile(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
-  targetUri?: vscode.Uri
+  targetUri?: vscode.Uri,
+  extensionPath?: string
 ): Promise<void> {
-  await handoffFromFileOrSelection('fix', runner, state, output, false, targetUri);
+  await handoffFromFileOrSelection('fix', runner, state, output, false, targetUri, extensionPath);
 }
 
 export async function askCodexExplainCurrentError(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
-  targetUri?: vscode.Uri
+  targetUri?: vscode.Uri,
+  extensionPath?: string
 ): Promise<void> {
-  await handoffFromFileOrSelection('explain', runner, state, output, false, targetUri);
+  await handoffFromFileOrSelection('explain', runner, state, output, false, targetUri, extensionPath);
 }
 
 export async function askCodexContinueFromReport(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
-  targetUri?: vscode.Uri
+  targetUri?: vscode.Uri,
+  extensionPath?: string
 ): Promise<void> {
-  await handoffFromFileOrSelection('continue', runner, state, output, false, targetUri);
+  await handoffFromFileOrSelection('continue', runner, state, output, false, targetUri, extensionPath);
 }
 
 export async function askCodexHandOffSelection(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
-  targetUri?: vscode.Uri
+  targetUri?: vscode.Uri,
+  extensionPath?: string
 ): Promise<void> {
-  await handoffFromFileOrSelection('fix', runner, state, output, true, targetUri);
+  await handoffFromFileOrSelection('fix', runner, state, output, true, targetUri, extensionPath);
 }
 
 async function handoffFromFileOrSelection(
@@ -50,7 +54,8 @@ async function handoffFromFileOrSelection(
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
   forceSelection = false,
-  targetUri?: vscode.Uri
+  targetUri?: vscode.Uri,
+  extensionPath?: string
 ): Promise<void> {
   const filePath = getCurrentTslFilePath(targetUri) ?? state.lastFilePath;
   if (!filePath) {
@@ -73,7 +78,7 @@ async function handoffFromFileOrSelection(
   }
 
   const style = getPromptStyle();
-  const prompt = buildCodexPrompt(mode, { ...repair, source }, style);
+  const prompt = buildCodexPrompt(mode, { ...repair, source, skill_docs: getBundledSkillDocs(extensionPath) }, style);
   const outputMode = getOutputMode();
   const outputPath = await emitPrompt(prompt, outputMode);
 
@@ -83,6 +88,40 @@ async function handoffFromFileOrSelection(
   const ready = summarizeHandoffReady(mode, style, outputMode, outputPath);
   output.appendLine(ready);
   vscode.window.showInformationMessage(ready);
+}
+
+function getBundledSkillDocs(extensionPath?: string): Record<string, unknown> {
+  if (!extensionPath) {
+    return {};
+  }
+  const docsRoot = path.join(extensionPath, 'resources', 'tsl-docs');
+  const manifestPath = path.join(docsRoot, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) {
+    return { docs_root: docsRoot, files: [], missing_manifest: true };
+  }
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Record<string, unknown>;
+    const files = Array.isArray(manifest.files)
+      ? manifest.files.map((file) => {
+          if (!file || typeof file !== 'object') {
+            return file;
+          }
+          const item = file as Record<string, unknown>;
+          const relativePath = String(item.path ?? '');
+          return {
+            ...item,
+            path: relativePath ? path.join(docsRoot, relativePath) : '',
+          };
+        })
+      : [];
+    return { ...manifest, docs_root: docsRoot, files };
+  } catch (error) {
+    return {
+      docs_root: docsRoot,
+      files: [],
+      manifest_error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 function getCurrentTslFilePath(targetUri?: vscode.Uri): string | undefined {

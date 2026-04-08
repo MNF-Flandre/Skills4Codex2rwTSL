@@ -18,6 +18,8 @@ test('buildCodexPrompt full mode contains key fields', () => {
   assert.match(prompt, /Failure kind: oracle_mismatch/);
   assert.match(prompt, /Task Goal/);
   assert.match(prompt, /Action request/);
+  assert.match(prompt, /Local TSL Workbench/);
+  assert.match(prompt, /Do not request an OpenAI API key/);
   assert.match(prompt, /Current TSL Source/);
 });
 

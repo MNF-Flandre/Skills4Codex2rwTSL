@@ -12,3 +12,9 @@ config/*.secret.env
 vscode-extension/node_modules/
 vscode-extension/out/
 vscode-extension/*.vsix
+vscode-extension/resources/tsl-docs/
+vscode-extension/resources/tsl-backend/
+vscode-extension/reports/
+vscode-extension/.vscode/
+reports/
+.tools/

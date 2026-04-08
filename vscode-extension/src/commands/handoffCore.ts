@@ -28,8 +28,7 @@ export function summarizeHandoffReady(
   outputPath?: string
 ): string {
   if (outputMode === 'workspaceTempFile' && outputPath) {
-    return `Codex handoff ready (${mode}/${style}) → ${outputPath}`;
+    return `Codex handoff ready (${mode}/${style}) -> ${outputPath}`;
   }
   return `Codex handoff ready (${mode}/${style}/${outputMode})`;
 }
-

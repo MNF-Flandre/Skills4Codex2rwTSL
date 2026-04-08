@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestPreflightNextAction, suggestValidationNextAction, summarizePreflightFailure } from '../commands/validationFeedback';
+import { formatTslOutputTables, suggestPreflightNextAction, suggestValidationNextAction, summarizePreflightFailure } from '../commands/validationFeedback';
 import { ValidationPayload } from '../types';
 
 test('summarizePreflightFailure lists blocked layers', () => {
@@ -51,3 +51,32 @@ test('suggestValidationNextAction maps oracle mismatch to report/codex guidance'
   assert.match(next, /Codex/);
 });
 
+test('formatTslOutputTables renders scalar and dataframe-like record outputs', () => {
+  const payload: ValidationPayload = {
+    command: 'validate',
+    status: 'pass',
+    failure_kind: '',
+    mode: 'smoke',
+    exit_code: 0,
+    result: {
+      tsl_output: {
+        signal: null,
+        value: null,
+        Q2: 81,
+        Q3: ['2023-10-01', 45200, 20231001],
+        Q12: [
+          { col1: 1, col2: 2, col3: 3 },
+          { col1: 2, col2: 3, col4: 4 },
+        ],
+      },
+    },
+  };
+
+  const text = formatTslOutputTables(payload);
+  assert.match(text, /TSL Output/);
+  assert.match(text, /field\s+type\s+value/);
+  assert.match(text, /Q2\s+number\s+81/);
+  assert.match(text, /Q12\s+2 rows\s+2 rows x 4 cols/);
+  assert.doesNotMatch(text, /idx\s+col1\s+col2\s+col3\s+col4/);
+  assert.doesNotMatch(text, /signal\s+null/);
+});

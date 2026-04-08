@@ -1,7 +1,7 @@
 # TSL Workbench (Beta)
 
-TSL Workbench is a VS Code extension for TSL validation workflows.  
-It uses the existing Python backend (`python/tsl_validation` + `python/ide_bridge.py`) and does **not** depend on private Codex APIs.
+TSL Workbench is a VS Code extension for TSL validation workflows.
+The VSIX bundles the Python backend (`python/tsl_validation` + `python/ide_bridge.py`) and does **not** depend on private Codex APIs.
 
 ## What it can do
 
@@ -49,19 +49,18 @@ Install generated `.vsix`:
 1. VS Code → Command Palette → `Extensions: Install from VSIX...`
 2. Choose generated `tsl-workbench-*.vsix`
 
-## Clean-install acceptance path (empty workspace + external backend)
+## Clean-install acceptance path (empty workspace)
 
 Use this path to validate a first-time installation:
 
 1. Install `.vsix`.
 2. Open an empty/new workspace folder.
-3. Set:
-   - `tslWorkbench.backend.mode = external_workspace_mode`
-   - `tslWorkbench.backend.root = <path-to-backend-repo-root>`
-4. Run `TSL: Configure Connection` (host/port/mode/password).
-5. Run `TSL: Run Diagnostic Wizard`.
-6. Run `TSL: Run Preflight`.
-7. Open a `.tsl` file and run:
+3. Run `TSL: Setup Wizard` or `TSL: Configure Connection`.
+4. Use the bundled backend when prompted unless you are developing against a local checkout.
+5. Choose Python, connection mode, host, port, username, password, and SDK/client path if live pyTSL execution is needed.
+6. Run `TSL: Run Diagnostic Wizard`.
+7. Run `TSL: Run Preflight`.
+8. Open a `.tsl` file and run:
    - `TSL: Run Lint on Current File`
    - `TSL: Run Smoke on Current File`
 
@@ -83,6 +82,12 @@ Backend root must contain:
 
 - `python/ide_bridge.py`
 - `python/tsl_validation/cli.py`
+
+Packaged VSIX builds include a bundled backend at:
+
+- `resources/tsl-backend`
+
+Normal users do not need to clone this repository just to run lint/preflight/smoke. A separate backend checkout is only needed for backend development or overriding the packaged backend.
 
 ## Configure connection
 
@@ -108,8 +113,8 @@ Validation adapter setting:
 
 ## First-use path (recommended)
 
-1. Configure `tslWorkbench.backend.mode` and `tslWorkbench.backend.root` (if needed).
-2. Run `TSL: Configure Connection`.
+1. Run `TSL: Setup Wizard`.
+2. Accept the bundled backend, or choose a backend checkout if you are developing the tool itself.
 3. Run `TSL: Run Preflight`.
 4. Open a `.tsl` file and run `TSL: Run Smoke on Current File`.
 5. If needed, run `TSL: Ask Codex to Fix Current File`.
@@ -138,10 +143,10 @@ Prompt style:
 
 ## Beta limitations
 
-- This extension still depends on a valid Python backend project root.
 - It is validation-driven (not a full LSP implementation).
 - Marketplace publish still requires verified publisher ownership (`mnf-flandre`) in VS Code Marketplace.
-- Live `pytsl` execution still depends on local SDK/runtime/account environment; use adapter `auto`/`mock` for non-live setups.
+- Live `pytsl` execution still depends on local SDK/runtime/account environment. Host/port/username/password are not sufficient by themselves if the target machine cannot import a matching `TSLPy*.pyd` module.
+- Use adapter `auto`/`mock` for non-live setups.
 
 ## Publisher/Marketplace readiness
 
