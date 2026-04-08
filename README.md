@@ -1,404 +1,166 @@
 # **TSL** sucks, you need Codex.
 
-> 本仓库收录了一套面向 **TSL** 的技术文档，旨在辅助 Coding Agents 自动生成、检查和调试 TSL 代码。
+> 本仓库收录了一套面向 **TSL** 的技术文档、验证后端与编辑器前端，目标是让 Coding Agents 与开发者能够更高效地生成、检查、调试并接管 TSL 代码。
 
 ---
 
-## 📂 文档说明
+## 仓库定位
+
+本仓库当前包含三层内容：
+
+1. **TSL 技术文档层**
+   - 语法、函数、语言对比、问题记录等文档
+2. **Python 验证与执行层**
+   - 轻量静态检查、执行式验证、报告生成、IDE 命令桥接
+3. **VS Code 前端层**
+   - 以扩展形式提供连接配置、预检、验证、报告查看与 Codex handoff 工作流
+
+当前推荐入口是 **`vscode-extension/`**。
+
+---
+
+## 文档说明
 
 ### 全量技术文档
 
 | 文件 | 内容 |
 |------|------|
-| [`tinysoft_syntax_tutorial.md`](./tinysoft_syntax_tutorial.md) | TSL 语法与教程全量参考，共 91 页，涵盖语言基础、控制流、数据类型、TS-SQL 等核心语法内容。 |
-| [`tinysoft_functions.md`](./tinysoft_functions.md) | TSL 内建函数全量参考，共 1538 页，收录所有内建函数的签名、参数说明与示例，条目较为繁杂。 |
+| [`tinysoft_syntax_tutorial.md`](./tinysoft_syntax_tutorial.md) | TSL 语法与教程全量参考，涵盖语言基础、控制流、数据类型、TS-SQL 等核心语法内容。 |
+| [`tinysoft_functions.md`](./tinysoft_functions.md) | TSL 内建函数全量参考，收录大量内建函数签名、参数说明与示例。 |
 
 ### Agent 精简技术文档
 
 | 文件 | 内容 |
 |------|------|
-| [`agent_skill_tsl_syntax.md`](./agent_skill_tsl_syntax.md) | 为自动化系统设计的语法参考，目标是让 agent 能精确解析 TSL 源码、生成 AST/模板，并安全构造 TS-SQL 查询。 |
-| [`agent_skill_tsl_functions.md`](./agent_skill_tsl_functions.md) | 为 agent 提供结构化的内建函数目录，按类别整理代表性函数，包含签名模板、参数说明、返回值语义与典型示例，便于代码生成、参数校验与单元测试。 |
+| [`agent_skill_tsl_syntax.md`](./agent_skill_tsl_syntax.md) | 面向自动化系统的 TSL 语法精简参考。 |
+| [`agent_skill_tsl_functions.md`](./agent_skill_tsl_functions.md) | 面向 agent 的结构化函数目录与调用模板。 |
 
 ### 语言对比文档
 
 | 文件 | 内容 |
 |------|------|
-| [`tsl_vs_pascal_common_pitfalls.md`](./tsl_vs_pascal_common_pitfalls.md) | TSL 与 Pascal 的对比及常见迁移易错点（TSL 与 Pascal 语法相似度约 72%）。为有 Pascal 或类似语言背景的 coding agents 提供类比学习的切入点，帮助快速建立正确的语言直觉。 |
+| [`tsl_vs_pascal_common_pitfalls.md`](./tsl_vs_pascal_common_pitfalls.md) | TSL 与 Pascal 的对比及常见迁移易错点。 |
 
 ### 问题记录
 
 | 文件 | 内容 |
 |------|------|
-| [`issue_log_public.md`](./issue_log_public.md) | 实际使用 TSL 过程中遇到的问题与解决方案的脱敏公开版本。**此文件会随实际使用持续更新。** |
+| [`issue_log_public.md`](./issue_log_public.md) | 实际使用 TSL 过程中遇到的问题与解决方案的脱敏公开版本。 |
 
 ---
 
-## 🗺️ 版本路线图
+## 版本路线图
 
-### ✅ v1.0（当前版本）
-本仓库目前维护的版本，包含上述所有文档。
+### ✅ v1.0
+完成基础文档仓库建设，包含：
+- TSL 全量语法文档
+- TSL 全量函数文档
+- Agent 精简技能文档
+- Pascal 对比与常见问题记录
 
-### 🚧 v1.1（规划中，有概率推出）
-计划加入一个基于 **Python 实现的 Linter**，用于对 TSL 代码进行静态检查，帮助在运行前捕获语法错误与常见问题。
+### ✅ 1.1
+完成基于 **Python** 的轻量静态检查与验证后端，包括：
+- TSL Linter
+- Validation Runner
+- Diff Report
+- IDE Bridge
+- golden cases 与测试体系
 
-### 🏗️ v2.0（超赞画饼中）
-计划基于 **pyTSL** 构建一个**伪内联执行**版本，实现更自动化的 debug 流程——在代码执行链路中自动插入检查点，辅助定位运行时问题。
+### ✅ 2.0
+完成基于 **pyTSL / 本地桥接路径** 的执行式验证原型，包括：
+- preflight / smoke / spec / oracle 分层验证
+- live case 模板
+- 本地桥接 smoke 路径
+- 结构化运行时诊断与报告输出
 
+### ✅ 3.0
+完成基于 **VS Code Extension** 的前端工作台，包括：
+- Sidebar / StatusBar / CodeLens / Commands
+- Connection 配置与 Diagnostic Wizard
+- 当前文件 Lint / Smoke / Spec / Oracle
+- Codex-friendly handoff
+- 本地打包、安装与发布前 hardening 流程
 
----
-
-## 🧩 VS Code Extension（推荐前端）
-
-当前推荐使用 `vscode-extension/` 作为 TSL 验证工作流前端，Python backend 仍是底层执行层：
-
-- 前端（VS Code extension）：命令、Sidebar、状态、Codex handoff
-- 后端（Python）：`python/tsl_validation/*` + `python/ide_bridge.py`
-
-扩展支持两种运行场景：
-
-- `repo_attached_mode`：仓库开发模式（自动探测 backend root）
-- `external_workspace_mode`：任意 workspace 模式（通过 `tslWorkbench.backend.root` 指定 backend）
-
-> 扩展层不重写 pyTSL 逻辑；仅做 VS Code 集成与交互。
-
-扩展当前已支持本地 release-hardening 流程：
-- `npm install`
-- `npm run compile`
-- `npm test`
-- `npm run package`（产出 `.vsix`）
-- `npm run release:check`（正式发布前门禁：publisher/icon/readiness）
-
-并在首次激活时给出配置/预检下一步引导（backend root / connection / preflight）。
-其中 `npm test` 已包含 Extension Host 集成测试（真实 VS Code 宿主层 smoke）。
-
-新增扩展诊断命令：`TSL: Run Diagnostic Wizard`，会检查 backend/python/connection/validation path/runtime hints 并给出下一步建议。
-
-扩展排障手册见：
-- `vscode-extension/TROUBLESHOOTING.md`
+### 🚧 4.0
+TBC，欢迎 issue。
 
 ---
 
-## 🧪 TSL Inline Validation Prototype（v0.1）
+## VS Code Extension（当前推荐前端）
 
-新增一个可运行的纵向原型（vertical slice），目标是打通：
+`vscode-extension/` 提供当前推荐的使用方式。
 
-- Run TSL Check（轻量静态检查）
-- Run Validation（Python参考 + adapter执行 + diff）
-- Show Diff Report（markdown/json）
-- Ask AI/Copilot to Fix（命令占位 + prompt 生成）
+它负责：
+- 连接配置
+- backend 发现
+- preflight 与验证命令
+- 报告查看
+- Codex handoff
 
-### 目录
+Python backend 仍作为底层执行层：
+- `python/tsl_validation/*`
+- `python/ide_bridge.py`
 
-- `docs/tsl_inline_validation_prototype.md`
-- `python/tsl_validation/`（lint / runner / adapters / schemas）
-- `python/ide_bridge.py`（IDE命令桥接）
+扩展支持：
+- `repo_attached_mode`
+- `external_workspace_mode`
+
+当前项目形态已经从“文档仓库”升级为：
+- **文档 + Python backend + VS Code extension** 的完整工作流仓库。
+
+---
+
+## Python Validation Backend
+
+Python 层提供以下能力：
+
+- TSL 静态检查
+- smoke / spec / oracle 执行式验证
+- mock / pyTSL adapter
+- report 生成
+- IDE bridge
+- live runtime 准备与预检
+
+核心目录：
+
+- `python/tsl_validation/`
+- `python/ide_bridge.py`
 - `examples/golden_cases/`
+- `examples/live_cases/`
 - `reports/`
 - `tests/`
 
-### 安装依赖
+---
 
-当前原型只依赖 Python 标准库，无需额外安装第三方包。
+## Codex / Copilot 协作定位
 
-### 运行静态检查
+本仓库不是单纯的文档集合，也不是单纯的扩展前端。  
+它的核心目标是为 **Codex / Copilot / Coding Agents** 提供一个更稳定的 TSL 工作台，使其可以：
 
-```bash
-PYTHONPATH=python python -m tsl_validation.cli lint examples/golden_cases/static_error_case.tsl
-```
+- 读取文档
+- 生成 TSL
+- 检查 TSL
+- 执行验证
+- 读取报告
+- 在 VS Code 中接管当前文件继续修改
 
-### 运行 Validation Runner（mock 模式）
+---
 
-```bash
-PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/mock_pass_case.tsl   --case examples/golden_cases/case_mock_pass.json   --task examples/golden_cases/task_spec.json   --adapter mock   --report reports/sample_validation_report.md
-```
+## 相关目录
 
-### 没有 pyTSL 环境时
+- `vscode-extension/`：VS Code 前端
+- `python/`：验证与桥接后端
+- `examples/`：golden cases / live cases
+- `reports/`：样例报告与运行输出
+- `docs/`：原型与设计说明
+- `tests/`：测试
 
-使用 `--adapter mock` 跑完整链路；这是默认可演示路径。
+---
 
-### 接入真实 pyTSL/TSLPy 时
+## 备注
 
-实现并替换 `python/tsl_validation/adapters/pytsl_adapter.py` 中：
+详细使用方式、排障说明与扩展侧说明请分别查看：
 
-- `PyTSLAdapter.execute(...)`（当前为 `TODO(integration point)`）
-- 保持输出 schema 与 `ValidationResult` 对齐
-
-### IDE 命令桥接示例
-
-```bash
-PYTHONPATH=python python python/ide_bridge.py run-check --file examples/golden_cases/static_error_case.tsl
-PYTHONPATH=python python python/ide_bridge.py run-validation --file examples/golden_cases/mock_pass_case.tsl --case examples/golden_cases/case_mock_pass.json --task examples/golden_cases/task_spec.json --adapter mock --report reports/sample_validation_report.md
-PYTHONPATH=python python python/ide_bridge.py show-diff --report reports/sample_validation_report.md
-PYTHONPATH=python python python/ide_bridge.py ask-fix --file examples/golden_cases/semantic_mismatch_case.tsl --report reports/sample_validation_report.md
-```
-
-
-### 执行式验证模式（smoke/spec/oracle）
-
-`validate` 命令支持三档模式：
-
-- `smoke`：只验证“能执行、无运行时异常、输出结构可返回”
-- `spec`：在 smoke 基础上校验输出字段/类型/缺失值
-- `oracle`：在 spec 基础上执行 Python reference vs runtime 输出关键字段对拍（最终 correctness 判定）
-
-推荐顺序：`smoke -> spec -> oracle`。
-
-### Mock/Local Evaluator 子集（对源码敏感）
-
-当前 mock adapter 不再仅依赖 case 参数，而是读取 `tsl_source` 并求值以下最小子集：
-
-- 赋值语句：`x := expr;`
-- 函数：`MA(close, n)`、`REF(x, k)`
-- 运算：`+ - * /`，比较 `> < >= <= =`（内部归一为 `==`）
-- 布尔：`true / false`
-- 变量引用与中间变量链式计算
-
-> 这是一个 very small evaluator，用于验证工程链路可行性；不是完整 TSL 编译器。
-
-### CLI gate 退出码语义
-
-`python -m tsl_validation.cli` 的退出码：
-
-- `0`：通过
-- `1`：lint error / runtime failure / spec failure
-- `2`：oracle diff mismatch
-- `3`：usage/configuration error（例如缺失 case 文件）
-
-示例：
-
-```bash
-PYTHONPATH=python python -m tsl_validation.cli validate \
-  examples/golden_cases/mock_pass_case.tsl \
-  --case examples/golden_cases/case_mock_pass.json \
-  --task examples/golden_cases/task_spec.json \
-  --adapter auto \
-  --mode oracle \
-  --report reports/sample_validation_report.md
-```
-
-### pyTSL 集成说明（保持 adapter 边界）
-
-`python/tsl_validation/adapters/pytsl_adapter.py` 已支持：
-
-- 运行环境检测（`pytsl`/`tslpy` 包可用性）
-- 配置检测（`PYTSL_SERVER`、`PYTSL_RUNTIME`、`PYTSL_AUTH_TOKEN` 等）
-- 未就绪时返回结构化 graceful failure（而非直接抛异常）
-
-真实接入需在 `PyTSLAdapter.execute()` 中替换 `TODO(integration point)`，并保持输出 schema：
-
-- `adapter` / `execution_mode` / `runtime_status` / `runtime_errors`
-- `outputs`（至少与 compare/required 字段对齐）
-- `integration`（环境与对接元数据）
-
-
-### Reference Strategy（Oracle Reference Layer）
-
-`runner` 现在支持可配置 reference strategy（优先从 `case.parameters.reference_strategy` / `case.parameters.python_reference` 读取）：
-
-- `moving_average_signal`：基于窗口均值产生 `value/signal`
-- `last_value`：以最后一个点作为 `value`
-- `identity`：恒等映射（可配 threshold）
-- `custom_case_config`：由 case 明确提供 `custom_outputs`
-
-`python_reference` 结构化输出包括：
-- `outputs`
-- `reference_strategy`
-- `reference_metadata`
-- `intermediate`
-
-### Lint Policy（执行策略）
-
-`validate` 支持 lint policy：
-
-- `block`：有 lint error 直接短路，不执行 runtime
-- `warn`：记录 lint error，继续执行 runtime（默认）
-- `off`：忽略 lint gate
-
-CLI 示例：
-
-```bash
-PYTHONPATH=python python -m tsl_validation.cli validate   examples/golden_cases/static_error_case.tsl   --case examples/golden_cases/case_static_error.json   --task examples/golden_cases/task_spec.json   --mode smoke   --lint-policy block
-```
-
-### Auto Adapter Fallback（稳态选路）
-
-`--adapter auto` 现在只有在以下条件都满足时才选 pyTSL：
-1. 环境 ready（包 + 必要配置）
-2. execute path 已实现（`implemented=true`）
-
-否则自动回退到 mock/local evaluator，并在 metadata 中记录：
-- `requested_adapter`
-- `actual_adapter`
-- `fallback_used`
-- `fallback_reason`
-
-### Local Evaluator Trace（可解释执行）
-
-mock/local evaluator 除 outputs 外还返回：
-- `intermediate.parsed_assignments`
-- `intermediate.trace`
-- `intermediate.final_env`
-- `intermediate.support_scope`
-
-用于定位语义偏差，不把 prototype 引向完整编译器。
-
-### Ask-Fix Payload（增强）
-
-`ide_bridge.py ask-fix` 的 payload 现包含：
-- 源码、diagnostics、mode、failure_kind、diff summary
-- mismatch fields、reference strategy、runtime adapter/errors
-- runtime intermediate trace/final_env
-- minimal repro case
-- `repair_prompt_preview`（可直接用于 Copilot/Codex 输入）
-
-
-
-### Live pyTSL 本地试跑准备（preflight -> smoke -> oracle）
-
-当前 pyTSL 集成已补齐“真实执行骨架 + preflight + 输出归一化 + live case 模板”，可用于本地带账号试跑准备。
-
-#### 1) 本地配置
-
-复制模板并填写：
-
-```bash
-cp .env.example .env.local
-# 然后导出到当前 shell（示例）
-set -a && source .env.local && set +a
-```
-
-必须字段（至少）：
-- `PYTSL_SERVER`
-- `PYTSL_RUNTIME`
-- `PYTSL_AUTH_TOKEN`
-
-常用字段：
-- `PYTSL_SYMBOL`
-- `PYTSL_PERIOD`
-- `PYTSL_START_DATE`
-- `PYTSL_END_DATE`
-- `PYTSL_MARKET`
-- `PYTSL_ADJUST_MODE`
-- `PYTSL_EXTRA_SYSTEM_PARAMS`
-
-> 不要提交真实凭证；`.env*` 已在 `.gitignore` 屏蔽（保留 `.env.example`）。
-
-#### 2) live case schema
-
-新增 live 模板在 `examples/live_cases/`：
-- `live_smoke_case.json`
-- `live_oracle_case.json`
-- `live_smoke_source.tsl`
-
-live 关键字段放在：
-- `parameters.runtime_case`
-
-包括：
-- `symbol/period/start_date/end_date`
-- `market/adjust_mode`
-- `server/runtime/auth`（可留空走环境变量）
-- `extra_system_params`
-- `output_fields`
-
-日期格式约定：`start_date/end_date` 使用 `YYYY-MM-DD`。
-
-旧 mock case 仍兼容（`input_series` + 既有 parameters）。
-
-#### 3) preflight
-
-先跑 preflight，再跑 validate：
-
-```bash
-PYTHONPATH=python python -m tsl_validation.cli preflight   --case examples/live_cases/live_smoke_case.json
-```
-
-preflight 结构化输出包含：
-- `package_ready`
-- `config_ready`
-- `case_ready`
-- `implemented`
-- `overall_ready`
-- `problems`
-
-#### 4) live smoke
-
-```bash
-PYTHONPATH=python python -m tsl_validation.cli validate   examples/live_cases/live_smoke_source.tsl   --case examples/live_cases/live_smoke_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode smoke   --lint-policy warn   --report reports/live_smoke_report.md
-```
-
-#### 5) live oracle
-
-```bash
-PYTHONPATH=python python -m tsl_validation.cli validate   examples/live_cases/live_smoke_source.tsl   --case examples/live_cases/live_oracle_case.json   --task examples/golden_cases/task_spec.json   --adapter pytsl   --mode oracle   --lint-policy warn   --report reports/live_oracle_report.md
-```
-
-#### 6) adapter 选择语义
-
-- `--adapter pytsl`：显式走 pyTSL，不会偷偷回退 mock（失败会直接暴露在 preflight/connect/execute/normalize 阶段）。
-- `--adapter auto`：允许回退 mock，但会记录 `requested/actual/fallback/reason`。
-
-#### 7) 仍是 TODO(integration point)
-
-已完成：
-- 执行分层骨架（load/build/preflight/connect/execute/normalize/disconnect）
-- 结构化阶段错误
-- 归一化输出层
-
-仍需本地补充：
-- 真实 pyTSL SDK 精确 connect/execute 签名与返回结构映射（文件内已显式 `TODO(integration point)`）
-
-## Live pyTSL local-network trial
-
-Two connection modes are modeled:
-
-- `remote_api`
-- `local_client_bridge`
-
-For this repo, the validated institution-specific local bridge path is `local_client_bridge`.
-
-### Local setup
-
-1. Connect to your required internal network first.
-2. Copy `.env.example` to `.env.local`.
-3. Fill in or export:
-   - `PYTSL_CONNECTION_MODE=local_client_bridge`
-   - `PYTSL_HOST=TODO_LOCAL_HOST`
-   - `PYTSL_PORT=TODO_LOCAL_PORT`
-   - `PYTSL_USERNAME=...`
-   - `PYTSL_PASSWORD=...`
-4. Keep real credentials out of git. `.env`, `.env.local`, and `config/*.local.env` are ignored.
-
-### Live cases
-
-- `examples/live_cases/live_smoke_case.json`
-- `examples/live_cases/live_oracle_case.json`
-- `examples/live_cases/live_smoke_source.tsl`
-
-The smoke template is wired for the validated local bridge path. The oracle template is still a placeholder until the real reference source and return schema are wired.
-
-### Recommended run order
-
-1. `python -m tsl_validation.cli preflight --case examples/live_cases/live_smoke_case.json`
-2. `python -m tsl_validation.cli validate examples/live_cases/live_smoke_source.tsl --case examples/live_cases/live_smoke_case.json --task examples/golden_cases/task_spec.json --adapter pytsl --mode smoke --lint-policy warn --report reports/live_smoke_report.md`
-3. `python -m tsl_validation.cli validate examples/live_cases/live_smoke_source.tsl --case examples/live_cases/live_oracle_case.json --task examples/golden_cases/task_spec.json --adapter pytsl --mode oracle --lint-policy warn --report reports/live_oracle_report.md` if a real oracle source is wired
-
-### Current machine status
-
-- Runtime SDK module is importable from local SDK path
-- TCP to `TODO_LOCAL_HOST:TODO_LOCAL_PORT` is reachable
-- `local_client_bridge` smoke execution passes once credentials are supplied
-- live oracle remains partially blocked until a reference source is wired
-
-### Common first failure layers
-
-1. Missing or blank credentials
-2. Runtime package missing or wrong bitness
-3. Connect/login/session failure
-4. Output normalization mismatch
-5. Oracle/reference source design gap
-
-### TODO(integration point)
-
-- Map the real pyTSL oracle/reference source and return schema
-- Document the live oracle comparison contract once it exists
+- `vscode-extension/README.md`
+- `vscode-extension/TROUBLESHOOTING.md`
+- `docs/tsl_inline_validation_prototype.md`
