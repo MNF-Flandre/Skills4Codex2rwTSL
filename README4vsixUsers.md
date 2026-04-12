@@ -6,7 +6,7 @@
 下载最新版本的 `.vsix` 文件。
 
 ### 2. 安装扩展
-在 `AnalyseNG.NET` 文件夹中打开 VS Code。
+在工作文件夹中打开 VS Code。（不建议在C盘打开）
 
 按下 `Ctrl+Shift+P`，输入：
 
@@ -31,7 +31,7 @@
 
 - `AnalyseNG.NET` 位于 `C:` 盘
 - `PATH` 中没有 Python
-- 打开的 VS Code 工作目录不是 `AnalyseNG.NET`
+- 打开的 VS Code 工作目录位于 `C:` 盘
 
 ### 4. 完成配置
 当左下角出现绿色的 `TSL Ready` 时，说明配置已经完成。
