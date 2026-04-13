@@ -14,7 +14,7 @@
    - 轻量静态检查、执行式验证、报告生成、IDE 命令桥接
 3. **VS Code 前端层**
    - 以扩展形式提供连接配置、预检、验证、报告查看与 Codex handoff 工作流
-   - 通过VS Code安装 tsl-workbench-0.3.2.vsix 后，使用TSL:Setup Wizard完成初始设置
+   - 通过VS Code安装最新版本的 tsl-workbench.vsix 后，使用TSL:Setup Wizard完成初始设置
    - **开袋即食!**
      
 当前推荐入口是 **`vscode-extension/`**。
