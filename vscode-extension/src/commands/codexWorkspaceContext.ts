@@ -5,8 +5,10 @@ import { PythonBackendRunner } from '../backend/pythonRunner';
 import { ConfigurationService } from '../config/configurationService';
 import { PathResolver } from '../services/pathResolver';
 import { ExtensionRuntimeState, ValidationMode } from '../types';
+import { openCodexWithContext } from './codexDirectIntegration';
+import { detectCodexIntegration } from './codexIntegrationSupport';
 
-interface PrepareCodexContextInput {
+export interface PrepareCodexContextInput {
   runner: PythonBackendRunner;
   configuration: ConfigurationService;
   resolver: PathResolver;
@@ -16,7 +18,50 @@ interface PrepareCodexContextInput {
   targetUri?: vscode.Uri;
 }
 
+export interface CodexWorkspaceContextResult {
+  contextPath: string;
+  workspaceRoot: string;
+  targetFile?: string;
+  codexCommands: string[];
+}
+
 export async function prepareCodexWorkspaceContext(input: PrepareCodexContextInput): Promise<void> {
+  const context = await ensureCodexWorkspaceContextFile(input);
+  const doc = await vscode.workspace.openTextDocument(context.contextPath);
+  await vscode.window.showTextDocument(doc, { preview: false });
+
+  const support = detectCodexIntegration(context.codexCommands);
+  input.state.codexHandoffStatus = `workspace context ready -> ${context.contextPath}`;
+  input.output.appendLine(`Codex workspace context ready -> ${context.contextPath}`);
+  if (support.mode !== 'none') {
+    const action = await vscode.window.showInformationMessage(
+      `TSL Codex context file created. Open ${support.mode} now?`,
+      'Open in Codex',
+      'Not Now'
+    );
+    if (action === 'Open in Codex') {
+      const opened = await openCodexWithContext({
+        contextPath: context.contextPath,
+        targetFile: context.targetFile,
+        reportPath: input.state.lastReportPath || input.runner.getLastReportPath(),
+        output: input.output,
+      });
+      input.state.codexHandoffStatus = `${opened.mode} ready (${opened.attached.length} attached)`;
+      vscode.window.showInformationMessage(`Opened ${opened.mode} with ${opened.attached.length} attached file(s).`);
+      return;
+    }
+  }
+
+  const opener = [
+    'Use the local TSL Workbench context for this workspace.',
+    `Read this file before editing TSL: ${context.contextPath}`,
+    'Do not use an OpenAI API path for TSL validation; rely on the already configured local VS Code/Codex session and the local TSL Workbench backend.',
+  ].join('\n');
+  await vscode.env.clipboard.writeText(opener);
+  vscode.window.showInformationMessage('TSL Codex context file created and opener prompt copied to clipboard.');
+}
+
+export async function ensureCodexWorkspaceContextFile(input: PrepareCodexContextInput): Promise<CodexWorkspaceContextResult> {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || input.resolver.getBackendRoot();
   const targetFile = getCurrentTslFilePath(input.targetUri) || input.state.lastFilePath;
   const contextDir = path.join(workspaceRoot, '.tsl-workbench');
@@ -31,23 +76,21 @@ export async function prepareCodexWorkspaceContext(input: PrepareCodexContextInp
     codexCommands,
   });
   fs.writeFileSync(contextPath, content, 'utf-8');
+  return {
+    contextPath,
+    workspaceRoot,
+    targetFile,
+    codexCommands,
+  };
+}
 
-  const opener = [
-    'Use the local TSL Workbench context for this workspace.',
-    `Read this file before editing TSL: ${contextPath}`,
-    'Do not use an OpenAI API path for TSL validation; rely on the already configured local VS Code/Codex session and the local TSL Workbench backend.',
-  ].join('\n');
-  await vscode.env.clipboard.writeText(opener);
-
-  const doc = await vscode.workspace.openTextDocument(contextPath);
-  await vscode.window.showTextDocument(doc, { preview: false });
-
-  input.state.codexHandoffStatus = `workspace context ready -> ${contextPath}`;
-  input.output.appendLine(`Codex workspace context ready -> ${contextPath}`);
-  if (codexCommands.length) {
-    input.output.appendLine(`Detected Codex-related VS Code commands: ${codexCommands.join(', ')}`);
-  }
-  vscode.window.showInformationMessage('TSL Codex context file created and opener prompt copied to clipboard.');
+export async function detectCodexCommands(): Promise<string[]> {
+  const commands = await vscode.commands.getCommands(true);
+  return commands
+    .filter((command) => /codex|chatgpt|workbench\.action\.chat\.open/i.test(command))
+    .filter((command) => !command.startsWith('tslWorkbench.'))
+    .sort()
+    .slice(0, 50);
 }
 
 async function buildCodexWorkspaceContext(input: PrepareCodexContextInput & {
@@ -88,6 +131,7 @@ async function buildCodexWorkspaceContext(input: PrepareCodexContextInput & {
     `- Workspace root: ${input.workspaceRoot}`,
     `- Backend root: ${backend.backendRoot}`,
     `- Backend mode: ${backend.effectiveMode}`,
+    `- Backend source: ${backend.discoverySource}`,
     `- Python module path: ${backend.pythonModulePath}`,
     `- Python executable: ${python}`,
     `- Connection mode: ${profile.mode}`,
@@ -115,37 +159,26 @@ async function buildCodexWorkspaceContext(input: PrepareCodexContextInput & {
     '## VS Code Commands',
     '- TSL: Run Preflight',
     '- TSL: Run Lint on Current File',
-    '- TSL: Run Smoke on Current File',
-    '- TSL: Run Oracle on Current File',
+    '- TSL: Validate Current File',
     '- TSL: Open Last Report',
-    '- TSL: Ask Codex to Fix Current File',
-    '- TSL: Prepare Codex Takeover Context',
+    '- TSL: Open in Codex',
     '',
     '## Codex Extension Detection',
     input.codexCommands.length
       ? input.codexCommands.map((command) => `- ${command}`).join('\n')
-      : '- No Codex-specific VS Code command names were visible from this extension host. Use the installed Codex panel/chat manually and tell it to read this file.',
+      : '- No Codex-specific VS Code command names were visible from this extension host.',
     '',
     '## TSL Docs To Read First',
     docs.length ? docs.map((doc) => `- ${doc}`).join('\n') : '- Bundled docs manifest was not found. Check resources/tsl-docs in the TSL Workbench extension directory.',
     '',
     '## Operating Rules For Codex',
-    '- Prefer small patches and rerun Smoke after edits.',
-    '- Use Oracle only when a stable reference source exists.',
+    '- Prefer small patches and rerun Validate Current File after edits.',
+    '- Use Validate Current File as the default validation step. Use Oracle only when a stable reference source exists.',
     '- Do not commit or print credentials.',
     '- Treat `local_client_bridge` and `remote_api` as fallback-capable; do not ask the user to manually switch modes unless both fail.',
     '- If validation fails, report the failure layer: config, network, SDK import, connect/auth, execute, or normalization.',
     '',
   ].join('\n');
-}
-
-async function detectCodexCommands(): Promise<string[]> {
-  const commands = await vscode.commands.getCommands(true);
-  return commands
-    .filter((command) => /codex/i.test(command))
-    .filter((command) => !command.startsWith('tslWorkbench.'))
-    .sort()
-    .slice(0, 20);
 }
 
 function getBundledDocs(extensionPath: string): string[] {

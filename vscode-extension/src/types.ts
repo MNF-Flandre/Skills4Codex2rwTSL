@@ -71,12 +71,13 @@ export interface BackendSummary {
   effectiveMode: 'repo_attached_mode' | 'external_workspace_mode';
   backendRoot: string;
   pythonModulePath: string;
-  discoverySource: 'configured' | 'workspace' | 'extension_parent';
+  discoverySource: 'configured' | 'workspace' | 'extension_parent' | 'bundled_backend';
 }
 
 export interface ExtensionRuntimeState {
   connectionSummary: string;
   backendSummary: string;
+  agentBridgeStatus: string;
   preflightStatus: string;
   validationStatus: string;
   lastValidationMode: string;
@@ -84,5 +85,18 @@ export interface ExtensionRuntimeState {
   lastReportPath: string;
   lastFilePath: string;
   codexHandoffStatus: string;
+  statusBarSummary: string;
+}
+
+export interface AgentBridgeStateSnapshot {
+  connectionSummary: string;
+  backendSummary: string;
+  agentBridgeStatus: string;
+  preflightStatus: string;
+  validationStatus: string;
+  lastValidationMode: string;
+  lastFailureKind: string;
+  lastReportPath: string;
+  lastFilePath: string;
   statusBarSummary: string;
 }

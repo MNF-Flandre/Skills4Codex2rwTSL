@@ -26,6 +26,30 @@ test('PathResolver prefers configured backend root in external mode', () => {
   assert.equal(summary.effectiveMode, 'external_workspace_mode');
 });
 
+test('PathResolver prefers current bundled backend over stale extension backend roots', () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsl-ext-workspace-'));
+  const extensionRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsl-ext-installed-'));
+  const bundledBackend = path.join(extensionRoot, 'resources', 'tsl-backend');
+  makeBackendRoot(bundledBackend);
+  const staleBackend = path.join(
+    workspaceRoot,
+    'extensions',
+    'mnf-flandre.tsl-workbench-0.3.5',
+    'resources',
+    'tsl-backend'
+  );
+  makeBackendRoot(staleBackend);
+  const resolver = new PathResolver({
+    workspaceRoot,
+    extensionPath: extensionRoot,
+    backendMode: 'external_workspace_mode',
+    configuredBackendRoot: staleBackend,
+    pythonModulePath: 'python',
+  });
+  assert.equal(resolver.getBackendRoot(), bundledBackend);
+  assert.equal(resolver.getBackendSummary().discoverySource, 'bundled_backend');
+});
+
 test('PathResolver resolves relative report path against workspace', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tsl-ext-'));
   makeBackendRoot(tmp);
@@ -81,7 +105,8 @@ test('PathResolver auto mode detects bundled extension backend root', () => {
     pythonModulePath: 'python',
   });
   assert.equal(resolver.getBackendRoot(), bundledBackend);
-  assert.equal(resolver.getBackendSummary().effectiveMode, 'repo_attached_mode');
+  assert.equal(resolver.getBackendSummary().effectiveMode, 'external_workspace_mode');
+  assert.equal(resolver.getBackendSummary().discoverySource, 'bundled_backend');
 });
 
 test('PathResolver repo_attached_mode can use configured relative root', () => {

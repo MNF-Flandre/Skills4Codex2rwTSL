@@ -78,30 +78,56 @@ export class PathResolver {
     const workspace = this.input.workspaceRoot || '';
     const extensionParent = path.resolve(this.input.extensionPath, '..');
     const bundledBackend = path.join(this.input.extensionPath, 'resources', 'tsl-backend');
+    const effectiveConfigured = this.shouldPreferBundledBackend(configured, bundledBackend) ? bundledBackend : configured;
 
     if (mode === 'external_workspace_mode') {
-      if (!configured) {
+      if (!effectiveConfigured) {
         throw new Error(
           'Backend mode is external_workspace_mode but tslWorkbench.backend.root is empty. Set backend root to a repository that contains python/ide_bridge.py.'
         );
       }
-      return this.ensureBackend(configured, mode, 'configured');
+      return this.ensureBackend(
+        effectiveConfigured,
+        mode,
+        effectiveConfigured === bundledBackend ? 'bundled_backend' : 'configured'
+      );
     }
 
     if (mode === 'repo_attached_mode') {
-      const candidates = [configured, workspace, bundledBackend, extensionParent].filter(Boolean);
+      const candidates = [effectiveConfigured, workspace, bundledBackend, extensionParent].filter(Boolean);
       for (const candidate of candidates) {
         if (this.isBackendRoot(candidate)) {
-          return this.ensureBackend(candidate, mode, candidate === configured ? 'configured' : candidate === workspace ? 'workspace' : 'extension_parent');
+          return this.ensureBackend(
+            candidate,
+            mode,
+            candidate === effectiveConfigured
+              ? effectiveConfigured === bundledBackend
+                ? 'bundled_backend'
+                : 'configured'
+              : candidate === workspace
+                ? 'workspace'
+                : candidate === bundledBackend
+                  ? 'bundled_backend'
+                  : 'extension_parent'
+          );
         }
       }
       throw new Error('repo_attached_mode requires a backend root with python/ide_bridge.py and python/tsl_validation/cli.py.');
     }
 
-    const autoCandidates = [configured, workspace, bundledBackend, extensionParent].filter(Boolean);
+    const autoCandidates = [effectiveConfigured, workspace, bundledBackend, extensionParent].filter(Boolean);
     for (const candidate of autoCandidates) {
       if (this.isBackendRoot(candidate)) {
-        const source = candidate === configured ? 'configured' : candidate === workspace ? 'workspace' : candidate === bundledBackend ? 'extension_parent' : 'extension_parent';
+        const source =
+          candidate === effectiveConfigured
+            ? effectiveConfigured === bundledBackend
+              ? 'bundled_backend'
+              : 'configured'
+            : candidate === workspace
+              ? 'workspace'
+              : candidate === bundledBackend
+                ? 'bundled_backend'
+                : 'extension_parent';
         const effectiveMode = source === 'workspace' || source === 'extension_parent' ? 'repo_attached_mode' : 'external_workspace_mode';
         return this.ensureBackend(candidate, mode, source, effectiveMode);
       }
@@ -114,7 +140,7 @@ export class PathResolver {
   private ensureBackend(
     backendRoot: string,
     requestedMode: BackendMode,
-    source: 'configured' | 'workspace' | 'extension_parent',
+    source: 'configured' | 'workspace' | 'extension_parent' | 'bundled_backend',
     effectiveMode?: 'repo_attached_mode' | 'external_workspace_mode'
   ): BackendSummary {
     if (!this.isBackendRoot(backendRoot)) {
@@ -146,5 +172,17 @@ export class PathResolver {
       return false;
     }
     return REQUIRED_MARKERS.every((marker) => fs.existsSync(path.join(candidate, marker)));
+  }
+
+  private shouldPreferBundledBackend(configured: string, bundledBackend: string): boolean {
+    if (!configured || !bundledBackend || !this.isBackendRoot(bundledBackend)) {
+      return false;
+    }
+    const normalizedConfigured = path.normalize(configured).toLowerCase();
+    const normalizedBundled = path.normalize(bundledBackend).toLowerCase();
+    if (normalizedConfigured === normalizedBundled) {
+      return false;
+    }
+    return /[\\/]extensions[\\/]mnf-flandre\.tsl-workbench-[^\\/]+[\\/]resources[\\/]tsl-backend$/i.test(normalizedConfigured);
   }
 }

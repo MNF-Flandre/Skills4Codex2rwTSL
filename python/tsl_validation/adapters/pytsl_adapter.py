@@ -33,6 +33,13 @@ class PyTSLAdapter(TSLRuntimeAdapter):
     PROBLEM_SDK_NOT_READY = "sdk_not_ready"
     PROBLEM_EXECUTE_PATH_NOT_IMPLEMENTED = "execute_path_not_implemented"
     CONNECTION_MODES = {"remote_api", "local_client_bridge", "auto"}
+    LOCAL_BRIDGE_REMOTE_PREFERRED_FUNCTIONS = (
+        "GetBKByDate",
+        "GetBkByDate",
+        "StockSWIndustryNameLv1",
+        "BackUpSystemParameters",
+        "BackUpSystemParameters2",
+    )
     VERSIONED_SDK_MODULES = [
         "TSLPy314",
         "TSLPy313",
@@ -413,6 +420,34 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             return "sdk_failure"
         return "runtime_failure"
 
+    def _classify_execution_failure_kind(self, connection_mode: str, error_text: Any) -> str:
+        if connection_mode == "local_client_bridge" and self._is_local_bridge_capability_gap(error_text):
+            return "local_bridge_capability_gap"
+        return self._classify_failure_kind("execute", error_text)
+
+    def _source_remote_preference_reasons(self, tsl_source: str) -> List[str]:
+        reasons: List[str] = []
+        for name in self.LOCAL_BRIDGE_REMOTE_PREFERRED_FUNCTIONS:
+            if re.search(rf"(?i)\b{re.escape(name)}\b", tsl_source):
+                reasons.append(name)
+        deduped: List[str] = []
+        for name in reasons:
+            if name not in deduped:
+                deduped.append(name)
+        return deduped
+
+    def _is_local_bridge_capability_gap(self, error_text: Any) -> bool:
+        message = self._decode_text(error_text).lower()
+        if "function:getbkbydate" in message and "instruction:sselect" in message:
+            return True
+        if "select/update/delete" in message and "sselect" in message:
+            return True
+        if "stockswindustrynamelv1" in message and ("backupsystemparameters" in message or "tbackupsysparam" in message):
+            return True
+        if "backupsystemparameters" in message and "compile error or not found" in message:
+            return True
+        return False
+
     def _classify_preflight_failure_kind(self, preflight: Dict[str, Any]) -> str:
         kinds = []
         for problem in preflight.get("problems", []):
@@ -431,7 +466,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
     def _unwrap_execution_result(self, raw_result: Any) -> Any:
         if isinstance(raw_result, (tuple, list)) and len(raw_result) >= 2:
             head = raw_result[0]
-            if head in {0, True, None}:
+            if head in (0, True, None):
                 payload = raw_result[1]
                 if isinstance(payload, (dict, list, tuple)) or payload is None:
                     return payload
@@ -738,8 +773,10 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             return self._connect_local_client_bridge(runtime_module, runtime_config)
         return self._connect_remote_api(runtime_module, runtime_config)
 
-    def _connection_mode_order(self, requested_mode: str) -> List[str]:
+    def _connection_mode_order(self, requested_mode: str, tsl_source: str = "") -> List[str]:
         if requested_mode == "remote_api":
+            return ["remote_api", "local_client_bridge"]
+        if requested_mode == "auto":
             return ["remote_api", "local_client_bridge"]
         return ["local_client_bridge", "remote_api"]
 
@@ -786,7 +823,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             raw_result, execute_info = self._call_module_function(exec_target, "LocalExecute", executable_source)
             if not execute_info.get("ok"):
                 execute_info["mode"] = connection_mode
-                execute_info["failure_kind"] = self._classify_failure_kind("execute", execute_info.get("error", ""))
+                execute_info["failure_kind"] = self._classify_execution_failure_kind(connection_mode, execute_info.get("error", ""))
                 return None, execute_info
             if not self._result_ok(raw_result):
                 return None, {
@@ -797,7 +834,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
                     "result": raw_result,
                     "payload": payload,
                     "sys_param": sys_param,
-                    "failure_kind": self._classify_failure_kind("execute", self._result_error(raw_result) or raw_result),
+                    "failure_kind": self._classify_execution_failure_kind(connection_mode, self._result_error(raw_result) or raw_result),
                 }
             return self._unwrap_execution_result(raw_result), {
                 "ok": True,
@@ -811,7 +848,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
         raw_result, execute_info = self._call_module_function(exec_target, "RemoteExecute", executable_source, sys_param)
         if not execute_info.get("ok"):
             execute_info["mode"] = connection_mode
-            execute_info["failure_kind"] = self._classify_failure_kind("execute", execute_info.get("error", ""))
+            execute_info["failure_kind"] = self._classify_execution_failure_kind(connection_mode, execute_info.get("error", ""))
             return None, execute_info
         if not self._result_ok(raw_result):
             return None, {
@@ -822,7 +859,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
                 "result": raw_result,
                 "payload": payload,
                 "sys_param": sys_param,
-                "failure_kind": self._classify_failure_kind("execute", self._result_error(raw_result) or raw_result),
+                "failure_kind": self._classify_execution_failure_kind(connection_mode, self._result_error(raw_result) or raw_result),
             }
         return self._unwrap_execution_result(raw_result), {
             "ok": True,
@@ -888,17 +925,30 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             mapping[key] = seq[idx + 1]
         return mapping
 
-    def _unwrap_singleton_output_fields(self, raw_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _unwrap_singleton_output_fields(self, raw_dict: Dict[str, Any], preferred_keys: List[str]) -> Dict[str, Any]:
+        preferred = {str(key).lower() for key in preferred_keys if isinstance(key, str)}
+        if not preferred:
+            return raw_dict
         singleton_keys = [
             key for key, value in raw_dict.items()
-            if isinstance(value, list) and len(value) == 1
+            if isinstance(value, list) and len(value) == 1 and str(key).lower() in preferred
         ]
         if len(singleton_keys) < 2:
             return raw_dict
         return {
-            key: value[0] if isinstance(value, list) and len(value) == 1 else value
+            key: value[0] if isinstance(value, list) and len(value) == 1 and str(key).lower() in preferred else value
             for key, value in raw_dict.items()
         }
+
+    def _unwrap_singleton_tabular_container(self, value: Any) -> Any:
+        if not (isinstance(value, list) and len(value) == 1 and isinstance(value[0], list)):
+            return value
+        inner = value[0]
+        if not inner:
+            return inner
+        if all(isinstance(item, (list, dict)) for item in inner):
+            return inner
+        return value
 
     def _normalize_outputs(self, raw_result: Any, case: ValidationCase, task_spec: TaskSpec) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         normalize_errors: List[str] = []
@@ -925,18 +975,23 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             raw_dict = mapped if mapped else {"records": raw_result}
         else:
             raw_dict = {"value": raw_result}
-        raw_dict = self._unwrap_singleton_output_fields(raw_dict)
+        alias = {
+            "signal": ["signal", "sig", "lead_signal", "buy", "lead_buy"],
+            "value": ["value", "val", "avg", "score", "last_value"],
+            "window": ["window", "n"],
+            "series_tail": ["series_tail", "tail", "close_tail"],
+        }
+        unwrap_candidates: List[str] = []
+        for field in wanted:
+            unwrap_candidates.extend([field, field.lower(), field.upper()])
+            for name in alias.get(field, []):
+                unwrap_candidates.extend([name, name.lower(), name.upper()])
+        raw_dict = self._unwrap_singleton_output_fields(raw_dict, unwrap_candidates)
 
         debug_summary["raw_keys"] = sorted(raw_dict.keys())[:20]
 
         def pick_field(field: str) -> Any:
             candidates = [field, field.lower(), field.upper()]
-            alias = {
-                "signal": ["signal", "sig", "lead_signal", "buy", "lead_buy"],
-                "value": ["value", "val", "avg", "score", "last_value"],
-                "window": ["window", "n"],
-                "series_tail": ["series_tail", "tail", "close_tail"],
-            }
             for name in alias.get(field, []):
                 candidates.extend([name, name.lower(), name.upper()])
             for c in candidates:
@@ -981,7 +1036,7 @@ class PyTSLAdapter(TSLRuntimeAdapter):
 
         for key, value in raw_dict.items():
             if key not in outputs:
-                outputs[key] = self._normalize_tree(value)
+                outputs[key] = self._normalize_tree(self._unwrap_singleton_tabular_container(value))
                 source_map[key] = "raw"
 
         debug_summary["mapped_fields"] = source_map
@@ -1170,10 +1225,12 @@ class PyTSLAdapter(TSLRuntimeAdapter):
 
         runtime_config = self._build_runtime_config(case)
         requested_mode = runtime_config.get("connection_mode") or preflight.get("connection_mode", "auto")
+        remote_preferred_reasons = self._source_remote_preference_reasons(tsl_source) if requested_mode == "auto" else []
+        connection_order = self._connection_mode_order(requested_mode, tsl_source=tsl_source)
         attempts: List[Dict[str, Any]] = []
         last_payload: Dict[str, Any] = {}
 
-        for mode in self._connection_mode_order(requested_mode):
+        for mode in connection_order:
             attempt_config = dict(runtime_config)
             attempt_config["connection_mode"] = mode
             payload = self._execute_attempt(
@@ -1194,6 +1251,9 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             })
             integration["requested_connection_mode"] = requested_mode
             integration["attempts"] = attempts[:]
+            if remote_preferred_reasons:
+                integration["remote_preferred_reasons"] = remote_preferred_reasons
+                integration["connection_mode_strategy"] = "source_contains_remote_preferred_runtime_calls"
             if payload.get("runtime_status") == "ok":
                 if len(attempts) > 1:
                     integration["fallback_used"] = True
@@ -1201,6 +1261,10 @@ class PyTSLAdapter(TSLRuntimeAdapter):
             last_payload = payload
 
         if last_payload:
-            last_payload.setdefault("integration", {})["requested_connection_mode"] = requested_mode
-            last_payload.setdefault("integration", {})["attempts"] = attempts
+            integration = last_payload.setdefault("integration", {})
+            integration["requested_connection_mode"] = requested_mode
+            integration["attempts"] = attempts
+            if remote_preferred_reasons:
+                integration["remote_preferred_reasons"] = remote_preferred_reasons
+                integration["connection_mode_strategy"] = "source_contains_remote_preferred_runtime_calls"
         return last_payload

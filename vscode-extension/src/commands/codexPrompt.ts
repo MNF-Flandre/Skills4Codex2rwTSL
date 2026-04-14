@@ -25,7 +25,7 @@ function localWorkbenchInstructions(): string[] {
   return [
     'Use the local TSL Workbench integration for validation and debugging. Do not request an OpenAI API key for this workflow.',
     'If a workspace context file exists at `.tsl-workbench/CODEX_TSL_WORKBENCH_CONTEXT.md`, read it before editing TSL code.',
-    'Prefer TSL Workbench commands: Run Preflight, Run Lint, Run Smoke, and then Oracle only when a real reference source exists.',
+    'Prefer TSL Workbench commands: Run Preflight, Run Lint, and Run Validate Current File. Use Oracle only as an advanced comparison mode when a real reference source exists.',
   ];
 }
 

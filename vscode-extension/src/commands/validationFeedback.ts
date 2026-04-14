@@ -42,6 +42,9 @@ export function summarizeValidationFailure(mode: ValidationMode, payload: Valida
 
 export function suggestValidationNextAction(payload: ValidationPayload): string {
   const failureKind = payload.failure_kind || '';
+  if (failureKind.includes('local_bridge_capability_gap')) {
+    return 'Use auto or remote_api for this file; local_client_bridge on this machine cannot execute some board/industry query functions reliably.';
+  }
   if (failureKind.includes('lint')) {
     return 'Fix diagnostics shown in Problems panel, then rerun validation.';
   }
@@ -49,7 +52,7 @@ export function suggestValidationNextAction(payload: ValidationPayload): string 
     return 'Run preflight and verify runtime credentials/network.';
   }
   if (failureKind.includes('oracle') || failureKind.includes('spec')) {
-    return 'Open last report, inspect diff summary, then run Codex fix/explain.';
+    return 'Open last report, inspect diff summary, then use Open in Codex.';
   }
   if (failureKind.includes('config')) {
     return 'Review backend root / case / task / report path settings.';
@@ -71,13 +74,8 @@ export function formatTslOutputTables(payload: ValidationPayload): string {
 
   const scalarRows: string[][] = [['field', 'type', 'value']];
   for (const [key, value] of visibleEntries) {
-    if (isRecordList(value)) {
-      scalarRows.push([key, `${value.length} rows`, previewRecordList(value)]);
-    } else if (isRecord(value) && shallowPrimitiveRecord(value)) {
-      scalarRows.push([key, 'dict', compactValue(value)]);
-    } else {
-      scalarRows.push([key, valueType(value), compactValue(value)]);
-    }
+    const summary = summarizeOutputValue(value);
+    scalarRows.push([key, summary.type, summary.value]);
   }
 
   return ['TSL Output', formatRows(scalarRows)].filter(Boolean).join('\n\n');
@@ -115,42 +113,57 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isRecordList(value: unknown): value is Array<Record<string, unknown>> {
-  return Array.isArray(value) && value.length > 0 && value.every(isRecord);
+function isRowLikeArray(value: unknown): value is Array<unknown> {
+  return Array.isArray(value) && value.length > 0 && value.every((item) => Array.isArray(item) || isRecord(item));
 }
 
-function shallowPrimitiveRecord(value: Record<string, unknown>): boolean {
-  return Object.values(value).every((item) => !isRecord(item) && !isRecordList(item));
-}
-
-function tableShape(records: Array<Record<string, unknown>>): string {
-  const cols = new Set<string>();
-  for (const row of records) {
-    for (const key of Object.keys(row)) {
-      cols.add(key);
-    }
-  }
-  return `${records.length} rows x ${cols.size} cols`;
-}
-
-function previewRecordList(records: Array<Record<string, unknown>>): string {
-  if (!records.length) {
-    return '0 rows';
-  }
-  return `${tableShape(records)}; first=${compactValue(records[0])}`;
-}
-
-function valueType(value: unknown): string {
+function summarizeOutputValue(value: unknown): { type: string; value: string } {
   if (Array.isArray(value)) {
-    return 'list';
+    return summarizeArray(value);
   }
   if (isRecord(value)) {
-    return 'dict';
+    return { type: 'dict', value: compactValue(value) };
   }
   if (value === null) {
-    return 'null';
+    return { type: 'null', value: 'null' };
   }
-  return typeof value;
+  return { type: typeof value, value: compactValue(value) };
+}
+
+function summarizeArray(items: Array<unknown>): { type: string; value: string } {
+  const type = `array[${items.length}]`;
+  if (!items.length) {
+    return { type, value: '[]' };
+  }
+
+  if (isRowLikeArray(items)) {
+    return {
+      type,
+      value: `${items.length} rows x ${rowWidth(items)} cols; first=${compactValue(items[0])}`,
+    };
+  }
+
+  return {
+    type,
+    value: compactValue(items),
+  };
+}
+
+function rowWidth(rows: Array<unknown>): number {
+  let width = 0;
+  const recordKeys = new Set<string>();
+  for (const row of rows) {
+    if (Array.isArray(row)) {
+      width = Math.max(width, row.length);
+      continue;
+    }
+    if (isRecord(row)) {
+      for (const key of Object.keys(row)) {
+        recordKeys.add(key);
+      }
+    }
+  }
+  return Math.max(width, recordKeys.size);
 }
 
 function compactValue(value: unknown): string {

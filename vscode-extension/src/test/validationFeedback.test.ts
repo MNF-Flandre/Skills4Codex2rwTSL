@@ -51,6 +51,20 @@ test('suggestValidationNextAction maps oracle mismatch to report/codex guidance'
   assert.match(next, /Codex/);
 });
 
+test('suggestValidationNextAction maps local bridge capability gap to remote guidance', () => {
+  const payload: ValidationPayload = {
+    command: 'validate',
+    status: 'fail',
+    failure_kind: 'local_bridge_capability_gap',
+    mode: 'smoke',
+    exit_code: 1,
+    result: {},
+  };
+  const next = suggestValidationNextAction(payload);
+  assert.match(next, /auto or remote_api/);
+  assert.match(next, /local_client_bridge/);
+});
+
 test('formatTslOutputTables renders scalar and dataframe-like record outputs', () => {
   const payload: ValidationPayload = {
     command: 'validate',
@@ -62,8 +76,8 @@ test('formatTslOutputTables renders scalar and dataframe-like record outputs', (
       tsl_output: {
         signal: null,
         value: null,
-        Q2: 81,
-        Q3: ['2023-10-01', 45200, 20231001],
+        Q2: [{ a: 1, b: 2 }],
+        Q3: [['2023-10-01', 45200, 20231001]],
         Q12: [
           { col1: 1, col2: 2, col3: 3 },
           { col1: 2, col2: 3, col4: 4 },
@@ -75,8 +89,8 @@ test('formatTslOutputTables renders scalar and dataframe-like record outputs', (
   const text = formatTslOutputTables(payload);
   assert.match(text, /TSL Output/);
   assert.match(text, /field\s+type\s+value/);
-  assert.match(text, /Q2\s+number\s+81/);
-  assert.match(text, /Q12\s+2 rows\s+2 rows x 4 cols/);
-  assert.doesNotMatch(text, /idx\s+col1\s+col2\s+col3\s+col4/);
+  assert.match(text, /Q2\s+array\[1\]\s+1 rows x 2 cols; first=/);
+  assert.match(text, /Q3\s+array\[1\]\s+1 rows x 3 cols; first=/);
+  assert.match(text, /Q12\s+array\[2\]\s+2 rows x 4 cols; first=/);
   assert.doesNotMatch(text, /signal\s+null/);
 });

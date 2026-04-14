@@ -55,7 +55,7 @@ export function buildStartupGuidance(input: StartupGuidanceInput): StartupGuidan
   return {
     severity: 'info',
     statusBarSummary: '$(check) TSL Ready',
-    message: 'TSL Workbench is configured. Recommended next step: run preflight, then open a .tsl file and run smoke/spec/oracle.',
+    message: 'TSL Workbench is configured. Recommended next step: run preflight, then open a .tsl file and run Validate Current File.',
     actions: [STARTUP_ACTION_RUN_PREFLIGHT],
   };
 }

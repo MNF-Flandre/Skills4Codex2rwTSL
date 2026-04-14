@@ -9,6 +9,7 @@ from tsl_validation.schemas import Diagnostic
 _BLOCK_BEGIN_RE = re.compile(r"\bbegin\b", re.IGNORECASE)
 _CONTROL_BLOCK_BEGIN_RE = re.compile(r"^\s*(try|case)\b", re.IGNORECASE)
 _BLOCK_END_RE = re.compile(r"\b(end)\b", re.IGNORECASE)
+_SELECT_BLOCK_BEGIN_RE = re.compile(r"^\s*(?:return\s+|[A-Za-z_][A-Za-z0-9_]*\s*:=\s*)?select\b", re.IGNORECASE)
 _ASSIGN_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:=(.*)$")
 _VAR_TOKEN_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 _DATE_LITERAL_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
@@ -37,6 +38,28 @@ _RESERVED = {
     "do",
     "to",
     "in",
+    "continue",
+    "break",
+    "downto",
+    "select",
+    "from",
+    "where",
+    "order",
+    "by",
+    "desc",
+    "asc",
+    "of",
+    "group",
+    "having",
+    "limit",
+    "join",
+    "left",
+    "right",
+    "inner",
+    "outer",
+    "on",
+    "as",
+    "union",
     "nil",
     "null",
 }
@@ -68,6 +91,8 @@ _BUILTIN_NAMES = {
     "tostn",
 }
 
+_SYSTEM_TOKEN_RE = re.compile(r"^(pn|ct|cy)_[A-Za-z0-9_]*$", re.IGNORECASE)
+
 
 class TslLinter:
     def lint(self, source: str) -> List[Diagnostic]:
@@ -83,7 +108,8 @@ class TslLinter:
     def _strip_strings(self, text: str) -> str:
         # TSL homework files often contain non-ASCII labels and date-like text.
         # Static checks should not treat content inside strings as identifiers.
-        return re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
+        stripped = re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
+        return re.sub(r"'(?:[^'\\]|\\.)*'", "''", stripped)
 
     def _code_without_comments_or_strings(self, line: str) -> str:
         return self._strip_strings(line.split("//", 1)[0])
@@ -114,7 +140,7 @@ class TslLinter:
                 defined.add(for_to.group(1).lower())
         return defined
 
-    def _extract_calls(self, expr: str) -> List[Tuple[str, str, int]]:
+    def _extract_calls(self, expr: str, base_offset: int = 0) -> List[Tuple[str, str, int]]:
         calls: List[Tuple[str, str, int]] = []
         idx = 0
         while idx < len(expr):
@@ -125,13 +151,14 @@ class TslLinter:
             while idx < len(expr) and (expr[idx].isalnum() or expr[idx] == "_"):
                 idx += 1
             name = expr[start:idx]
-            while idx < len(expr) and expr[idx].isspace():
-                idx += 1
-            if idx >= len(expr) or expr[idx] != "(":
+            lookahead = idx
+            while lookahead < len(expr) and expr[lookahead].isspace():
+                lookahead += 1
+            if lookahead >= len(expr) or expr[lookahead] != "(":
                 continue
             depth = 0
-            arg_start = idx + 1
-            j = idx
+            arg_start = lookahead + 1
+            j = lookahead
             while j < len(expr):
                 ch = expr[j]
                 if ch == "(":
@@ -140,13 +167,22 @@ class TslLinter:
                     depth -= 1
                     if depth == 0:
                         args = expr[arg_start:j]
-                        calls.append((name, args, start))
+                        calls.append((name, args, base_offset + start))
+                        calls.extend(self._extract_calls(args, base_offset + arg_start))
                         idx = j + 1
                         break
                 j += 1
             else:
                 idx += 1
         return calls
+
+    def _is_known_runtime_symbol(self, token: str) -> bool:
+        lower = token.lower()
+        if lower in _BUILTIN_NAMES:
+            return True
+        if _SYSTEM_TOKEN_RE.match(token):
+            return True
+        return False
 
     def _split_args(self, args: str) -> List[str]:
         parts: List[str] = []
@@ -176,6 +212,8 @@ class TslLinter:
             if _BLOCK_BEGIN_RE.search(code):
                 balance += 1
             elif _CONTROL_BLOCK_BEGIN_RE.search(code):
+                balance += 1
+            elif _SELECT_BLOCK_BEGIN_RE.search(code):
                 balance += 1
             if _BLOCK_END_RE.search(code):
                 balance -= 1
@@ -226,7 +264,7 @@ class TslLinter:
                     continue
                 if token.upper() in _FUNCTION_SIGNATURES:
                     continue
-                if lower in _BUILTIN_NAMES:
+                if self._is_known_runtime_symbol(token):
                     continue
                 if lower not in defined:
                     diagnostics.append(

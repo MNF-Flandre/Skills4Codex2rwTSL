@@ -130,9 +130,9 @@ export class PythonBackendRunner {
 
     const mode = await vscode.window.showQuickPick(
       [
-        { label: 'auto', detail: 'Try local bridge first and fallback to remote API when needed.' },
+        { label: 'auto', detail: 'Recommended. Try remote API first and fallback to local bridge when needed.' },
         { label: 'local_client_bridge', detail: 'Use local Tinysoft client bridge installed on this machine.' },
-        { label: 'remote_api', detail: 'Connect to remote API endpoint with credentials.' },
+        { label: 'remote_api', detail: 'Use only the remote API endpoint with credentials.' },
       ],
       { title: 'Connection Mode', ignoreFocusOut: true, canPickMany: false }
     );
@@ -238,8 +238,6 @@ export class PythonBackendRunner {
     const backendRoot = this.pathResolver.getBackendRoot();
     ensureFileExists(path.join(backendRoot, 'python', 'ide_bridge.py'));
 
-    this.output.appendLine(`$ ${pythonPath} ${args.join(' ')}`);
-
     const result = await new Promise<{ stdout: string; stderr: string; errorMessage: string }>((resolve) => {
       const execOptions = buildRunnerExecOptions(backendRoot);
       execFile(
@@ -257,10 +255,13 @@ export class PythonBackendRunner {
       );
     });
 
-    if (result.stderr.trim()) {
-      this.output.appendLine(result.stderr.trim());
-    }
-    if (!result.stdout.trim()) {
+    const stderrText = result.stderr.trim();
+    const stdoutText = result.stdout.trim();
+
+    if (!stdoutText) {
+      if (stderrText) {
+        this.output.appendLine(stderrText);
+      }
       if (result.errorMessage) {
         throw new Error(formatRunnerExecError(result.errorMessage, result.stderr ?? '', result.stdout ?? ''));
       }
@@ -269,10 +270,13 @@ export class PythonBackendRunner {
 
     let payload: T;
     try {
-      payload = parseJsonPayload<T>(result.stdout);
+      payload = parseJsonPayload<T>(stdoutText);
     } catch (error) {
-      if (result.stdout.trim()) {
-        this.output.appendLine(result.stdout.trim());
+      if (stderrText) {
+        this.output.appendLine(stderrText);
+      }
+      if (stdoutText) {
+        this.output.appendLine(stdoutText);
       }
       if (result.errorMessage) {
         throw new Error(formatRunnerExecError(result.errorMessage, result.stderr ?? '', result.stdout ?? ''));
@@ -281,12 +285,10 @@ export class PythonBackendRunner {
     }
 
     const status = (payload as any)?.status ?? 'ok';
-    const command = (payload as any)?.command ?? 'backend';
-    const failureKind = (payload as any)?.failure_kind ? ` failure=${(payload as any).failure_kind}` : '';
-    const mode = (payload as any)?.mode ? ` mode=${(payload as any).mode}` : '';
-    this.output.appendLine(`[backend] ${command} status=${status}${mode}${failureKind}`);
-
     if (status === 'error') {
+      if (stderrText) {
+        this.output.appendLine(stderrText);
+      }
       throw new Error(String((payload as any)?.error || result.errorMessage || 'Backend returned error status.'));
     }
     return payload;

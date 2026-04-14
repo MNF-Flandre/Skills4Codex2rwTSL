@@ -3,19 +3,40 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { PythonBackendRunner } from '../backend/pythonRunner';
 import { ExtensionRuntimeState } from '../types';
+import { openCodexWithContext } from './codexDirectIntegration';
 import { buildCodexPrompt, HandoffMode, PromptStyle } from './codexPrompt';
 import { buildFallbackRepairPayloadFromSource, HandoffOutputMode, summarizeHandoffReady } from './handoffCore';
+import { ensureCodexWorkspaceContextFile } from './codexWorkspaceContext';
+import { ConfigurationService } from '../config/configurationService';
+import { PathResolver } from '../services/pathResolver';
 
 type OutputMode = HandoffOutputMode;
+
+interface OptionalRuntimeContext {
+  configuration?: ConfigurationService;
+  resolver?: PathResolver;
+}
 
 export async function askCodexFixCurrentFile(
   runner: PythonBackendRunner,
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
   targetUri?: vscode.Uri,
-  extensionPath?: string
+  extensionPath?: string,
+  runtime?: OptionalRuntimeContext
 ): Promise<void> {
-  await handoffFromFileOrSelection('fix', runner, state, output, false, targetUri, extensionPath);
+  await handoffFromFileOrSelection('fix', runner, state, output, false, targetUri, extensionPath, runtime);
+}
+
+export async function openInCodexCurrentFile(
+  runner: PythonBackendRunner,
+  state: ExtensionRuntimeState,
+  output: vscode.OutputChannel,
+  targetUri?: vscode.Uri,
+  extensionPath?: string,
+  runtime?: OptionalRuntimeContext
+): Promise<void> {
+  await handoffFromFileOrSelection('fix', runner, state, output, false, targetUri, extensionPath, runtime, 'open');
 }
 
 export async function askCodexExplainCurrentError(
@@ -23,9 +44,10 @@ export async function askCodexExplainCurrentError(
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
   targetUri?: vscode.Uri,
-  extensionPath?: string
+  extensionPath?: string,
+  runtime?: OptionalRuntimeContext
 ): Promise<void> {
-  await handoffFromFileOrSelection('explain', runner, state, output, false, targetUri, extensionPath);
+  await handoffFromFileOrSelection('explain', runner, state, output, false, targetUri, extensionPath, runtime);
 }
 
 export async function askCodexContinueFromReport(
@@ -33,9 +55,10 @@ export async function askCodexContinueFromReport(
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
   targetUri?: vscode.Uri,
-  extensionPath?: string
+  extensionPath?: string,
+  runtime?: OptionalRuntimeContext
 ): Promise<void> {
-  await handoffFromFileOrSelection('continue', runner, state, output, false, targetUri, extensionPath);
+  await handoffFromFileOrSelection('continue', runner, state, output, false, targetUri, extensionPath, runtime);
 }
 
 export async function askCodexHandOffSelection(
@@ -43,9 +66,10 @@ export async function askCodexHandOffSelection(
   state: ExtensionRuntimeState,
   output: vscode.OutputChannel,
   targetUri?: vscode.Uri,
-  extensionPath?: string
+  extensionPath?: string,
+  runtime?: OptionalRuntimeContext
 ): Promise<void> {
-  await handoffFromFileOrSelection('fix', runner, state, output, true, targetUri, extensionPath);
+  await handoffFromFileOrSelection('fix', runner, state, output, true, targetUri, extensionPath, runtime);
 }
 
 async function handoffFromFileOrSelection(
@@ -55,7 +79,9 @@ async function handoffFromFileOrSelection(
   output: vscode.OutputChannel,
   forceSelection = false,
   targetUri?: vscode.Uri,
-  extensionPath?: string
+  extensionPath?: string,
+  runtime?: OptionalRuntimeContext,
+  displayLabel: string = mode
 ): Promise<void> {
   const filePath = getCurrentTslFilePath(targetUri) ?? state.lastFilePath;
   if (!filePath) {
@@ -79,15 +105,88 @@ async function handoffFromFileOrSelection(
 
   const style = getPromptStyle();
   const prompt = buildCodexPrompt(mode, { ...repair, source, skill_docs: getBundledSkillDocs(extensionPath) }, style);
-  const outputMode = getOutputMode();
-  const outputPath = await emitPrompt(prompt, outputMode);
+  const direct = runtime?.configuration && runtime?.resolver
+    ? await tryDirectCodexOpen({
+        mode,
+        prompt,
+        runner,
+        state,
+        output,
+        targetUri,
+        extensionPath,
+        runtime: {
+          configuration: runtime.configuration,
+          resolver: runtime.resolver,
+        },
+        filePath,
+        reportPath,
+        selectionText: forceSelection ? source : '',
+      })
+    : undefined;
 
-  state.codexHandoffStatus = `${mode} ready (${style}/${outputMode})`;
+  let outputPath: string | undefined;
+  let outputMode = getOutputMode();
+  if (!direct) {
+    outputPath = await emitPrompt(prompt, outputMode);
+  } else {
+    outputMode = 'workspaceTempFile';
+    outputPath = direct.handoffPath;
+  }
+
+  state.codexHandoffStatus = direct
+    ? `${displayLabel} ready (${style}/${direct.mode})`
+    : `${displayLabel} ready (${style}/${outputMode})`;
   state.lastFilePath = filePath;
   state.statusBarSummary = '$(comment-discussion) TSL Handoff Ready';
-  const ready = summarizeHandoffReady(mode, style, outputMode, outputPath);
+  const ready = direct
+    ? `Codex ready (${displayLabel}/${style}/${direct.mode}) -> ${direct.handoffPath}`
+    : summarizeHandoffReady(mode, style, outputMode, outputPath, displayLabel);
   output.appendLine(ready);
   vscode.window.showInformationMessage(ready);
+}
+
+async function tryDirectCodexOpen(args: {
+  mode: HandoffMode;
+  prompt: string;
+  runner: PythonBackendRunner;
+  state: ExtensionRuntimeState;
+  output: vscode.OutputChannel;
+  targetUri?: vscode.Uri;
+  extensionPath?: string;
+  runtime: { configuration: ConfigurationService; resolver: PathResolver };
+  filePath: string;
+  reportPath: string;
+  selectionText: string;
+}): Promise<{ mode: string; handoffPath: string } | undefined> {
+  if (!args.extensionPath) {
+    return undefined;
+  }
+
+  try {
+    const context = await ensureCodexWorkspaceContextFile({
+      runner: args.runner,
+      configuration: args.runtime.configuration,
+      resolver: args.runtime.resolver,
+      state: args.state,
+      output: args.output,
+      extensionPath: args.extensionPath,
+      targetUri: args.targetUri,
+    });
+    const handoffPath = await writeWorkspacePromptFile(args.prompt);
+    const opened = await openCodexWithContext({
+      contextPath: context.contextPath,
+      handoffPath,
+      targetFile: args.filePath,
+      reportPath: fs.existsSync(args.reportPath) ? args.reportPath : undefined,
+      selectionText: args.selectionText,
+      output: args.output,
+    });
+    args.output.appendLine(`Codex direct integration: ${opened.mode} (${opened.attached.length} attached file(s))`);
+    return { mode: opened.mode, handoffPath };
+  } catch (error) {
+    args.output.appendLine(`[codex] direct integration unavailable, falling back to prompt output: ${error instanceof Error ? error.message : String(error)}`);
+    return undefined;
+  }
 }
 
 function getBundledSkillDocs(extensionPath?: string): Record<string, unknown> {
@@ -182,4 +281,16 @@ export async function emitPrompt(prompt: string, outputMode: OutputMode): Promis
     return filePath;
   }
   return undefined;
+}
+
+async function writeWorkspacePromptFile(prompt: string): Promise<string> {
+  const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!workspace) {
+    throw new Error('Open a workspace folder before sending a handoff to Codex.');
+  }
+  const dir = path.join(workspace, '.tsl-workbench');
+  fs.mkdirSync(dir, { recursive: true });
+  const filePath = path.join(dir, `codex-handoff-${Date.now()}.md`);
+  fs.writeFileSync(filePath, prompt, 'utf-8');
+  return filePath;
 }

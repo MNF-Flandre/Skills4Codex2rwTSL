@@ -1,10 +1,11 @@
 import json
+import math
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from tsl_validation.runner import run_validation
-from tsl_validation.schemas import TaskSpec, ValidationCase
+from tsl_validation.schemas import DiffReport, Diagnostic, TaskSpec, ValidationCase, ValidationResult
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,6 +80,24 @@ class TestValidationRunner(unittest.TestCase):
         self.assertIn(result.metadata.get("failure_kind"), {"preflight_failure", "network_failure", "sdk_failure", "config_failure"})
         self.assertIn("runtime_stage", result.metadata)
         self.assertIn("connection_mode", result.metadata)
+
+    def test_validation_result_to_dict_normalizes_non_finite_floats(self):
+        result = ValidationResult(
+            task_spec=TaskSpec(task_id="t", objective="o", expected_behavior="e"),
+            case=ValidationCase(case_id="c", name="n"),
+            diagnostics=[Diagnostic(severity="warning", code="W", message="m", range=(1, 1), suggestion="s")],
+            python_reference={"value": float("nan"), "inf": float("inf"), "ok": 1.0},
+            tsl_output={"rows": [1.0, float("-inf"), float("nan")]},
+            metadata={"runtime": {"score": float("nan")}},
+            diff_report=DiffReport(case_id="c", summary="s"),
+        )
+        payload = result.to_dict()
+        self.assertIsNone(payload["python_reference"]["value"])
+        self.assertIsNone(payload["python_reference"]["inf"])
+        self.assertIsNone(payload["tsl_output"]["rows"][1])
+        self.assertIsNone(payload["tsl_output"]["rows"][2])
+        self.assertIsNone(payload["metadata"]["runtime"]["score"])
+        self.assertFalse(any(isinstance(v, float) and math.isnan(v) for v in [payload["python_reference"]["ok"]]))
 
 
 if __name__ == "__main__":

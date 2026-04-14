@@ -39,6 +39,14 @@ export function getWorkbenchRows(state: ExtensionRuntimeState): WorkbenchRow[] {
       icon: 'repo',
     },
     {
+      label: 'Agent Bridge',
+      description: state.agentBridgeStatus,
+      tooltip: `Agent bridge: ${state.agentBridgeStatus}`,
+      command: 'tslWorkbench.revealAgentBridge',
+      title: 'Reveal Agent Bridge',
+      icon: 'broadcast',
+    },
+    {
       label: 'Preflight',
       description: state.preflightStatus,
       tooltip: `Preflight status: ${state.preflightStatus}`,
@@ -50,8 +58,8 @@ export function getWorkbenchRows(state: ExtensionRuntimeState): WorkbenchRow[] {
       label: 'Last Validation',
       description: `${state.lastValidationMode} ${state.validationStatus} (${state.lastFailureKind})`.trim(),
       tooltip: `Last validation: ${state.lastValidationMode} / ${state.validationStatus} / ${state.lastFailureKind}`,
-      command: 'tslWorkbench.runOracleCurrentFile',
-      title: 'Run Oracle',
+      command: 'tslWorkbench.runValidateCurrentFile',
+      title: 'Validate Current File',
       icon: validationIcon,
     },
     {
@@ -74,8 +82,8 @@ export function getWorkbenchRows(state: ExtensionRuntimeState): WorkbenchRow[] {
       label: 'Codex Handoff',
       description: state.codexHandoffStatus,
       tooltip: `Codex handoff: ${state.codexHandoffStatus}`,
-      command: 'tslWorkbench.askCodexFixCurrentFile',
-      title: 'Ask Codex to Fix',
+      command: 'tslWorkbench.openInCodex',
+      title: 'Open in Codex',
       icon: 'comment-discussion',
     },
   ];

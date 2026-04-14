@@ -4,6 +4,13 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ConfigurationService } from '../config/configurationService';
 import { ConnectionMode, ConnectionProfile } from '../types';
+import { candidatePythonPaths } from './pythonDiscovery';
+import {
+  buildTslPySearchRoots,
+  pickTslPyFolderManually,
+  runTslPyRuntimeProbe,
+  summarizeTslPyProbe,
+} from './tslpyRuntimeSupport';
 
 const BACKEND_MARKERS = ['python/ide_bridge.py', 'python/tsl_validation/cli.py'];
 
@@ -33,7 +40,12 @@ export async function runSetupWizard(configuration: ConfigurationService, option
   }
   await configuration.updatePythonPath(pythonPath);
 
-  const profile = await chooseConnectionProfile(configuration, mode);
+  const runtimePaths = await detectOrChooseTslPyRuntime(configuration, backendRoot, pythonPath, mode, options);
+  if (!runtimePaths) {
+    return false;
+  }
+
+  const profile = await chooseConnectionProfile(configuration, mode, runtimePaths);
   if (!profile) {
     return false;
   }
@@ -55,24 +67,20 @@ function isBackendRoot(candidate: string): boolean {
 
 async function chooseBackendRoot(configuration: ConfigurationService, options: SetupWizardOptions): Promise<string | undefined> {
   const bundledBackend = path.join(options.extensionPath, 'resources', 'tsl-backend');
-  const candidates = [configuration.getBackendRoot(), options.workspaceRoot, bundledBackend, path.resolve(options.extensionPath, '..')]
+  const candidates = [configuration.getBackendRoot(), bundledBackend, options.workspaceRoot, path.resolve(options.extensionPath, '..')]
     .filter((candidate): candidate is string => Boolean(candidate))
     .map((candidate) => path.normalize(candidate));
   const existing = candidates.find(isBackendRoot);
+  const bundled = path.normalize(bundledBackend);
+
+  if (isBackendRoot(bundled)) {
+    options.output?.appendLine(`Setup wizard: using bundled backend at ${bundled}`);
+    return bundled;
+  }
 
   if (existing) {
-    const action = await vscode.window.showInformationMessage(
-      `Use TSL backend root?\n${existing}`,
-      { modal: true },
-      'Use This Backend',
-      'Choose Folder'
-    );
-    if (action === 'Use This Backend') {
-      return existing;
-    }
-    if (!action) {
-      return undefined;
-    }
+    options.output?.appendLine(`Setup wizard: using detected backend at ${existing}`);
+    return existing;
   }
 
   while (true) {
@@ -108,7 +116,7 @@ async function chooseConnectionMode(configuration: ConfigurationService): Promis
     [
       {
         label: 'auto',
-        detail: 'Try local client bridge first, then fallback to remote API when needed.',
+        detail: 'Recommended. Try remote API first, then fallback to local client bridge when needed.',
         picked: current === 'auto',
       },
       {
@@ -118,7 +126,7 @@ async function chooseConnectionMode(configuration: ConfigurationService): Promis
       },
       {
         label: 'remote_api',
-        detail: 'Use a direct host/port API connection when your SDK exposes it.',
+        detail: 'Use only the direct host/port API connection and do not try the local client bridge.',
         picked: current === 'remote_api',
       },
     ],
@@ -202,6 +210,161 @@ async function chooseAndValidatePythonPath(
   }
 }
 
+async function detectOrChooseTslPyRuntime(
+  configuration: ConfigurationService,
+  backendRoot: string,
+  pythonPath: string,
+  mode: ConnectionMode,
+  options: SetupWizardOptions
+): Promise<{ sdkPath: string; localClientPath: string } | undefined> {
+  const current = await configuration.getConnectionProfile();
+  if (mode === 'remote_api') {
+    return {
+      sdkPath: current.sdkPath,
+      localClientPath: current.localClientPath,
+    };
+  }
+
+  const required = mode === 'local_client_bridge';
+  let flow: 'auto' | 'manual' | 'skip' | undefined = await chooseTslPySetupFlow(required);
+
+  while (flow) {
+    if (flow === 'skip') {
+      return {
+        sdkPath: '',
+        localClientPath: '',
+      };
+    }
+
+    if (flow === 'manual') {
+      const selectedPath = await pickTslPyFolderManually({
+        title: required
+          ? 'Choose the Tinysoft/AnalyseNG folder that contains TSLPy*.pyd.'
+          : 'Choose the Tinysoft/AnalyseNG folder, or cancel to return.',
+        current: current.sdkPath || current.localClientPath,
+        required,
+      });
+      if (selectedPath === undefined) {
+        return undefined;
+      }
+      if (!selectedPath) {
+        return {
+          sdkPath: '',
+          localClientPath: '',
+        };
+      }
+
+      const manualProbe = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Validating selected TSLPy runtime...', cancellable: false },
+        () =>
+          runTslPyRuntimeProbe({
+            pythonPath,
+            backendRoot,
+            sdkPaths: [selectedPath],
+            maxDepth: 0,
+          })
+      );
+      options.output?.appendLine(`Setup wizard: manual runtime check -> ${summarizeTslPyProbe(manualProbe)}`);
+      if (manualProbe.status === 'pass') {
+        return {
+          sdkPath: selectedPath,
+          localClientPath: selectedPath,
+        };
+      }
+
+      flow = await chooseTslPyRetryFlow(
+        `The selected folder does not expose an importable ${manualProbe.expected_module || 'TSLPy runtime'} for this Python.`,
+        required
+      );
+      continue;
+    }
+
+    const searchRoots = buildTslPySearchRoots(options.workspaceRoot, [
+      current.sdkPath,
+      current.localClientPath,
+    ]);
+    const probe = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: 'Detecting local TSLPy runtime...', cancellable: false },
+      () =>
+        runTslPyRuntimeProbe({
+          pythonPath,
+          backendRoot,
+          sdkPaths: [current.sdkPath, current.localClientPath],
+          searchRoots,
+          maxDepth: 3,
+        })
+    );
+    options.output?.appendLine(`Setup wizard: ${summarizeTslPyProbe(probe)}`);
+
+    const detectedPath = String(probe.recommended_sdk_path || '').trim();
+    if (detectedPath) {
+      vscode.window.showInformationMessage(`TSLPy runtime detected automatically: ${detectedPath}`);
+      return {
+        sdkPath: detectedPath,
+        localClientPath: detectedPath,
+      };
+    }
+
+    const expected = probe.expected_module || 'TSLPy runtime';
+    flow = await chooseTslPyRetryFlow(
+      `No importable ${expected} was auto-detected for the selected Python. You can choose the Tinysoft/AnalyseNG folder manually instead.`,
+      required
+    );
+  }
+
+  return undefined;
+}
+
+async function chooseTslPySetupFlow(required: boolean): Promise<'auto' | 'manual' | 'skip' | undefined> {
+  const choices: Array<{ label: string; value: 'auto' | 'manual' | 'skip'; detail: string }> = [
+    {
+      label: 'Auto detect TSLPy runtime (Recommended)',
+      value: 'auto' as const,
+      detail: 'Scan common Tinysoft/AnalyseNG folders and validate importability for the selected Python.',
+    },
+    {
+      label: 'Choose Tinysoft folder manually',
+      value: 'manual' as const,
+      detail: 'Select the folder that contains TSLPy*.pyd, such as AnalyseNG.NET.',
+    },
+  ];
+  if (!required) {
+    choices.push({
+      label: 'Skip local TSLPy setup',
+      value: 'skip' as const,
+      detail: 'Continue without local binding. auto mode can still fall back to remote_api later.',
+    });
+  }
+  const picked = await vscode.window.showQuickPick(choices, {
+    title: 'TSLPy runtime setup',
+    placeHolder: 'Choose how TSL Workbench should locate the local Tinysoft runtime.',
+    ignoreFocusOut: true,
+  });
+  return picked?.value;
+}
+
+async function chooseTslPyRetryFlow(
+  message: string,
+  required: boolean
+): Promise<'auto' | 'manual' | 'skip' | undefined> {
+  const actions = ['Choose Folder Manually', 'Try Auto Detect Again'];
+  if (!required) {
+    actions.push('Skip');
+  }
+  actions.push('Cancel');
+  const picked = await vscode.window.showErrorMessage(message, ...actions);
+  if (picked === 'Choose Folder Manually') {
+    return 'manual';
+  }
+  if (picked === 'Try Auto Detect Again') {
+    return 'auto';
+  }
+  if (picked === 'Skip') {
+    return 'skip';
+  }
+  return undefined;
+}
+
 interface PythonCandidate {
   label: string;
   path: string;
@@ -230,31 +393,6 @@ async function discoverPythonCandidates(configuredPython: string): Promise<Pytho
     });
   }
   return candidates;
-}
-
-function candidatePythonPaths(configuredPython: string): string[] {
-  const candidates = [configuredPython || 'python', 'python'];
-  const envPrefixes = [
-    process.env.CONDA_PREFIX,
-    process.env.VIRTUAL_ENV,
-  ].filter((value): value is string => Boolean(value));
-  for (const prefix of envPrefixes) {
-    candidates.push(path.join(prefix, process.platform === 'win32' ? 'python.exe' : 'bin/python'));
-  }
-  if (process.platform === 'win32') {
-    const localAppData = process.env.LOCALAPPDATA || '';
-    candidates.push(
-      path.join(localAppData, 'Programs', 'Python', 'Python312', 'python.exe'),
-      path.join(localAppData, 'Programs', 'Python', 'Python311', 'python.exe'),
-      'py'
-    );
-  } else {
-    candidates.push('python3', '/usr/bin/python3', '/usr/local/bin/python3');
-  }
-  return candidates
-    .map((candidate) => candidate.trim())
-    .filter((candidate, index, array) => candidate && array.indexOf(candidate) === index)
-    .filter((candidate) => !path.isAbsolute(candidate) || fs.existsSync(candidate));
 }
 
 async function validatePythonBackend(pythonPath: string, backendRoot: string): Promise<{ ok: boolean; detail: string }> {
@@ -304,7 +442,8 @@ function runProcess(
 
 async function chooseConnectionProfile(
   configuration: ConfigurationService,
-  mode: ConnectionMode
+  mode: ConnectionMode,
+  runtimePaths: { sdkPath: string; localClientPath: string }
 ): Promise<{ profile: Omit<ConnectionProfile, 'hasPassword'>; password?: string } | undefined> {
   const current = await configuration.getConnectionProfile();
   const host = await vscode.window.showInputBox({
@@ -357,59 +496,18 @@ async function chooseConnectionProfile(
     return undefined;
   }
 
-  const sdkPath = await chooseOptionalFolder({
-    title: mode === 'remote_api' ? 'Select optional SDK folder' : 'Select Tinysoft SDK / client folder',
-    current: current.sdkPath || current.localClientPath,
-    required: mode !== 'remote_api',
-  });
-  if (sdkPath === undefined) {
-    return undefined;
-  }
-
   return {
     profile: {
       host: host.trim(),
       port: Number.parseInt(portInput, 10),
       username: username.trim(),
       mode,
-      sdkPath: sdkPath.trim(),
-      localClientPath: mode === 'remote_api' ? current.localClientPath : sdkPath.trim(),
+      sdkPath: runtimePaths.sdkPath.trim(),
+      localClientPath:
+        mode === 'remote_api'
+          ? current.localClientPath || runtimePaths.localClientPath.trim()
+          : runtimePaths.localClientPath.trim() || runtimePaths.sdkPath.trim(),
     },
     password: password.trim() ? password.trim() : undefined,
   };
-}
-
-async function chooseOptionalFolder(args: { title: string; current: string; required: boolean }): Promise<string | undefined> {
-  const choices = args.required
-    ? ['Choose Folder', 'Enter Path Manually', 'Cancel']
-    : ['Skip', 'Choose Folder', 'Enter Path Manually', 'Cancel'];
-  const picked = await vscode.window.showQuickPick(choices, {
-    title: args.title,
-    placeHolder: args.current || (args.required ? 'Choose the local Tinysoft/AnalyseNG installation folder.' : 'Optional.'),
-    ignoreFocusOut: true,
-  });
-  if (!picked || picked === 'Cancel') {
-    return undefined;
-  }
-  if (picked === 'Skip') {
-    return '';
-  }
-  if (picked === 'Enter Path Manually') {
-    const value = await vscode.window.showInputBox({
-      title: args.title,
-      value: args.current,
-      validateInput: (input) => (args.required && !input.trim() ? 'Path is required.' : undefined),
-      ignoreFocusOut: true,
-    });
-    return value?.trim();
-  }
-  const selected = await vscode.window.showOpenDialog({
-    title: args.title,
-    canSelectFiles: false,
-    canSelectFolders: true,
-    canSelectMany: false,
-    defaultUri: args.current && fs.existsSync(args.current) ? vscode.Uri.file(args.current) : undefined,
-    openLabel: 'Use Folder',
-  });
-  return selected?.[0]?.fsPath;
 }

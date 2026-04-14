@@ -23,6 +23,18 @@ export class ConfigurationService {
     return this.getString('backend.pythonModulePath', 'python');
   }
 
+  public isAgentBridgeEnabled(): boolean {
+    return vscode.workspace.getConfiguration('tslWorkbench').get<boolean>('agentBridge.enabled', true) !== false;
+  }
+
+  public getAgentBridgeHost(): string {
+    return this.getString('agentBridge.host', '127.0.0.1') || '127.0.0.1';
+  }
+
+  public getAgentBridgePort(): number {
+    return this.getNumber('agentBridge.port', 0);
+  }
+
   public getValidationCasePath(mode: ValidationMode): string {
     const key = `validation.casePath${mode.charAt(0).toUpperCase()}${mode.slice(1)}`;
     return this.getString(key, '');
@@ -138,6 +150,9 @@ export class ConfigurationService {
   }
 
   private getConfigurationTarget(): vscode.ConfigurationTarget {
-    return vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    // These settings are machine-local runtime settings, not project source settings.
+    // Writing them to workspace settings can fail when the opened folder is readonly
+    // or lives under locations such as Program Files / AnalyseNG.NET.
+    return vscode.ConfigurationTarget.Global;
   }
 }

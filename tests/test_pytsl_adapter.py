@@ -71,9 +71,18 @@ class TestPyTSLAdapter(unittest.TestCase):
 
     def test_connection_mode_order_supports_fallback(self):
         adapter = PyTSLAdapter()
-        self.assertEqual(adapter._connection_mode_order("auto"), ["local_client_bridge", "remote_api"])
-        self.assertEqual(adapter._connection_mode_order("local_client_bridge"), ["local_client_bridge", "remote_api"])
-        self.assertEqual(adapter._connection_mode_order("remote_api"), ["remote_api", "local_client_bridge"])
+        simple_source = "Begin\n  return 1;\nEnd;\n"
+        get_bk_source = 'Begin\n  stks := GetBKByDate("SH000016", d);\nEnd;\n'
+        self.assertEqual(adapter._connection_mode_order("auto", tsl_source=simple_source), ["remote_api", "local_client_bridge"])
+        self.assertEqual(adapter._connection_mode_order("auto", tsl_source=get_bk_source), ["remote_api", "local_client_bridge"])
+        self.assertEqual(adapter._connection_mode_order("local_client_bridge", tsl_source=get_bk_source), ["local_client_bridge", "remote_api"])
+        self.assertEqual(adapter._connection_mode_order("remote_api", tsl_source=simple_source), ["remote_api", "local_client_bridge"])
+
+    def test_classify_execution_failure_kind_detects_local_bridge_capability_gap(self):
+        adapter = PyTSLAdapter()
+        error_text = "function:GetBKByDate:GetBKByDatesub:line 55:instruction:sselect: Select/Update/Delete类型不对"
+        self.assertEqual(adapter._classify_execution_failure_kind("local_client_bridge", error_text), "local_bridge_capability_gap")
+        self.assertEqual(adapter._classify_execution_failure_kind("remote_api", error_text), "execute_failure")
 
     def test_execute_falls_back_to_second_connection_mode(self):
         adapter = PyTSLAdapter()
@@ -268,22 +277,43 @@ class TestPyTSLAdapter(unittest.TestCase):
         self.assertEqual(outputs.get("Q2"), 81)
         self.assertEqual(outputs.get("Q3"), ["2023-10-01", 45200, 20231001])
 
-    def test_normalize_outputs_unwraps_remote_singleton_field_wrappers(self):
+    def test_normalize_outputs_unwraps_singleton_tabular_wrappers_for_raw_fields(self):
         adapter = PyTSLAdapter()
         case = ValidationCase(case_id="hw3", name="hw3", parameters={})
         outputs, info = adapter._normalize_outputs(
             {
-                "Q1": [[{"股票代码": "SH600000"}]],
-                "Q2": [{"股票代码": "SH600028"}],
-                "Q6": [[{"股票代码": "SH600000"}, {"股票代码": "SH600009"}]],
+                "Q1": [[{"stock": "SH600000"}]],
+                "Q2": [{"stock": "SH600028"}],
+                "Q6": [[{"stock": "SH600000"}, {"stock": "SH600009"}]],
             },
             case,
             TaskSpec(task_id="t", objective="o", expected_behavior="e"),
         )
         self.assertTrue(info.get("ok"))
-        self.assertEqual(outputs.get("Q1"), [{"股票代码": "SH600000"}])
-        self.assertEqual(outputs.get("Q2"), {"股票代码": "SH600028"})
-        self.assertEqual(outputs.get("Q6"), [{"股票代码": "SH600000"}, {"股票代码": "SH600009"}])
+        self.assertEqual(outputs.get("Q1"), [{"stock": "SH600000"}])
+        self.assertEqual(outputs.get("Q2"), [{"stock": "SH600028"}])
+        self.assertEqual(outputs.get("Q6"), [{"stock": "SH600000"}, {"stock": "SH600009"}])
+
+    def test_normalize_outputs_still_unwraps_requested_singleton_fields(self):
+        adapter = PyTSLAdapter()
+        case = ValidationCase(
+            case_id="hw3",
+            name="hw3",
+            parameters={"output_fields": ["Q1", "Q2"], "required_fields": ["Q1", "Q2"]},
+        )
+        outputs, info = adapter._normalize_outputs(
+            {
+                "Q1": [[{"stock": "SH600000"}]],
+                "Q2": [{"stock": "SH600028"}],
+                "Q6": [[{"stock": "SH600009"}]],
+            },
+            case,
+            TaskSpec(task_id="t", objective="o", expected_behavior="e"),
+        )
+        self.assertTrue(info.get("ok"))
+        self.assertEqual(outputs.get("Q1"), [{"stock": "SH600000"}])
+        self.assertEqual(outputs.get("Q2"), {"stock": "SH600028"})
+        self.assertEqual(outputs.get("Q6"), [{"stock": "SH600009"}])
 
 
 if __name__ == "__main__":

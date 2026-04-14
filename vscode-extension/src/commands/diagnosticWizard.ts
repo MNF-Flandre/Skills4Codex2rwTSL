@@ -112,7 +112,7 @@ export async function collectDiagnosticReport(
     name: 'last known runtime state',
     status: state.preflightStatus === 'fail' || state.validationStatus === 'fail' ? 'warn' : 'pass',
     detail: `preflight=${state.preflightStatus}, validation=${state.validationStatus}, failure=${state.lastFailureKind || 'none'}`,
-    nextAction: 'If warning/fail appears, run preflight, then lint/smoke/oracle and inspect Output + report.',
+    nextAction: 'If warning/fail appears, run preflight, then lint/validate and inspect Output + report.',
   });
 
   return {

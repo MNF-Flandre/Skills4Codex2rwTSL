@@ -2,7 +2,7 @@
   "name": "tsl-workbench",
   "displayName": "TSL Workbench",
   "description": "TSL development workbench for VS Code with Python validation backend and Codex-friendly handoff.",
-  "version": "0.2.3",
+  "version": "0.5.2",
   "publisher": "mnf-flandre",
   "preview": true,
   "icon": "resources/marketplace-icon.png",
@@ -35,25 +35,21 @@
     "workbench"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onLanguage:tsl",
     "onView:tslWorkbench.sidebar",
     "onCommand:tslWorkbench.runSetupWizard",
     "onCommand:tslWorkbench.configureConnection",
     "onCommand:tslWorkbench.runPreflight",
     "onCommand:tslWorkbench.runLintCurrentFile",
-    "onCommand:tslWorkbench.runSmokeCurrentFile",
-    "onCommand:tslWorkbench.runSpecCurrentFile",
-    "onCommand:tslWorkbench.runOracleCurrentFile",
+    "onCommand:tslWorkbench.runValidateCurrentFile",
     "onCommand:tslWorkbench.openLastReport",
-    "onCommand:tslWorkbench.askCodexFixCurrentFile",
-    "onCommand:tslWorkbench.askCodexExplainCurrentError",
-    "onCommand:tslWorkbench.askCodexContinueFromReport",
-    "onCommand:tslWorkbench.askCodexHandOffSelection",
-    "onCommand:tslWorkbench.prepareCodexContext",
+    "onCommand:tslWorkbench.openInCodex",
     "onCommand:tslWorkbench.installTslPyRuntime",
     "onCommand:tslWorkbench.clearStoredPassword",
     "onCommand:tslWorkbench.resetConnection",
     "onCommand:tslWorkbench.revealConnectionSummary",
+    "onCommand:tslWorkbench.revealAgentBridge",
     "onCommand:tslWorkbench.runDiagnosticWizard",
     "onCommand:tslWorkbench.refreshSidebar"
   ],
@@ -77,44 +73,20 @@
         "title": "TSL: Run Lint on Current File"
       },
       {
-        "command": "tslWorkbench.runSmokeCurrentFile",
-        "title": "TSL: Run Smoke on Current File"
-      },
-      {
-        "command": "tslWorkbench.runSpecCurrentFile",
-        "title": "TSL: Run Spec on Current File"
-      },
-      {
-        "command": "tslWorkbench.runOracleCurrentFile",
-        "title": "TSL: Run Oracle on Current File"
+        "command": "tslWorkbench.runValidateCurrentFile",
+        "title": "TSL: Validate Current File"
       },
       {
         "command": "tslWorkbench.openLastReport",
         "title": "TSL: Open Last Report"
       },
       {
-        "command": "tslWorkbench.askCodexFixCurrentFile",
-        "title": "TSL: Ask Codex to Fix Current File"
-      },
-      {
-        "command": "tslWorkbench.askCodexExplainCurrentError",
-        "title": "TSL: Ask Codex to Explain Current Error"
-      },
-      {
-        "command": "tslWorkbench.askCodexContinueFromReport",
-        "title": "TSL: Ask Codex to Continue From Report"
+        "command": "tslWorkbench.openInCodex",
+        "title": "TSL: Open in Codex"
       },
       {
         "command": "tslWorkbench.refreshSidebar",
         "title": "TSL: Refresh Sidebar"
-      },
-      {
-        "command": "tslWorkbench.askCodexHandOffSelection",
-        "title": "TSL: Ask Codex for Current Selection"
-      },
-      {
-        "command": "tslWorkbench.prepareCodexContext",
-        "title": "TSL: Prepare Codex Takeover Context"
       },
       {
         "command": "tslWorkbench.installTslPyRuntime",
@@ -135,6 +107,10 @@
       {
         "command": "tslWorkbench.runDiagnosticWizard",
         "title": "TSL: Run Diagnostic Wizard"
+      },
+      {
+        "command": "tslWorkbench.revealAgentBridge",
+        "title": "TSL: Reveal Agent Bridge"
       }
     ],
     "viewsContainers": {
@@ -182,6 +158,21 @@
           "default": "python",
           "description": "Python module path directory under backend root for PYTHONPATH."
         },
+        "tslWorkbench.agentBridge.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the local agent bridge so other local tools or editor instances can call TSL Workbench safely through a token-protected localhost endpoint."
+        },
+        "tslWorkbench.agentBridge.host": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Host interface for the local TSL Workbench agent bridge. Keep this on 127.0.0.1 unless you explicitly need another local-only binding."
+        },
+        "tslWorkbench.agentBridge.port": {
+          "type": "number",
+          "default": 0,
+          "description": "Port for the local TSL Workbench agent bridge. Use 0 to let VS Code choose a free port automatically."
+        },
         "tslWorkbench.connection.mode": {
           "type": "string",
           "enum": [
@@ -190,7 +181,7 @@
             "local_client_bridge"
           ],
           "default": "auto",
-          "description": "Connection mode for runtime validation. auto tries local_client_bridge then falls back to remote_api."
+          "description": "Connection mode for runtime validation. auto tries remote_api first, then falls back to local_client_bridge."
         },
         "tslWorkbench.connection.host": {
           "type": "string",
@@ -283,39 +274,24 @@
         },
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.runSmokeCurrentFile",
+          "command": "tslWorkbench.runValidateCurrentFile",
           "group": "tsl@2"
         },
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.runOracleCurrentFile",
+          "command": "tslWorkbench.openInCodex",
           "group": "tsl@3"
-        },
-        {
-          "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.runSpecCurrentFile",
-          "group": "tsl@4"
-        },
-        {
-          "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.askCodexHandOffSelection",
-          "group": "tsl@5"
-        },
-        {
-          "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.prepareCodexContext",
-          "group": "tsl@6"
         }
       ],
       "editor/title": [
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.runOracleCurrentFile",
+          "command": "tslWorkbench.runValidateCurrentFile",
           "group": "navigation@3"
         },
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.askCodexFixCurrentFile",
+          "command": "tslWorkbench.openInCodex",
           "group": "navigation@4"
         }
       ],
@@ -327,12 +303,12 @@
         },
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.runSmokeCurrentFile",
+          "command": "tslWorkbench.runValidateCurrentFile",
           "group": "tsl@2"
         },
         {
           "when": "resourceExtname == .tsl",
-          "command": "tslWorkbench.askCodexFixCurrentFile",
+          "command": "tslWorkbench.openInCodex",
           "group": "tsl@3"
         }
       ],
@@ -345,6 +321,11 @@
         {
           "when": "view == tslWorkbench.sidebar",
           "command": "tslWorkbench.revealConnectionSummary",
+          "group": "navigation"
+        },
+        {
+          "when": "view == tslWorkbench.sidebar",
+          "command": "tslWorkbench.revealAgentBridge",
           "group": "navigation"
         },
         {

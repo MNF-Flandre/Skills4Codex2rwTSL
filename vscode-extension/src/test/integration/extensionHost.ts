@@ -15,7 +15,8 @@ export async function run(): Promise<void> {
     'tslWorkbench.configureConnection',
     'tslWorkbench.runPreflight',
     'tslWorkbench.runLintCurrentFile',
-    'tslWorkbench.askCodexFixCurrentFile',
+    'tslWorkbench.runValidateCurrentFile',
+    'tslWorkbench.openInCodex',
     'tslWorkbench.runDiagnosticWizard',
     'tslWorkbench.refreshSidebar',
   ]) {
@@ -37,8 +38,9 @@ export async function run(): Promise<void> {
   await vscode.window.showTextDocument(doc, { preview: false });
 
   await vscode.commands.executeCommand('tslWorkbench.runLintCurrentFile', vscode.Uri.file(samplePath));
+  await vscode.commands.executeCommand('tslWorkbench.runValidateCurrentFile', vscode.Uri.file(samplePath));
   await vscode.commands.executeCommand('tslWorkbench.runPreflight');
-  await vscode.commands.executeCommand('tslWorkbench.askCodexFixCurrentFile', vscode.Uri.file(samplePath));
+  await vscode.commands.executeCommand('tslWorkbench.openInCodex', vscode.Uri.file(samplePath));
   await vscode.commands.executeCommand('tslWorkbench.runDiagnosticWizard');
 }
 
