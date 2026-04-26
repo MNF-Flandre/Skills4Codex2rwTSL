@@ -19,35 +19,6 @@
      
 当前推荐入口是 **`vscode-extension/`**。
 
----
-
-## 文档说明
-
-### 全量技术文档
-
-| 文件 | 内容 |
-|------|------|
-| [`tinysoft_syntax_tutorial.md`](./tinysoft_syntax_tutorial.md) | TSL 语法与教程全量参考，涵盖语言基础、控制流、数据类型、TS-SQL 等核心语法内容。 |
-| [`tinysoft_functions.md`](./tinysoft_functions.md) | TSL 内建函数全量参考，收录大量内建函数签名、参数说明与示例。 |
-
-### Agent 精简技术文档
-
-| 文件 | 内容 |
-|------|------|
-| [`agent_skill_tsl_syntax.md`](./agent_skill_tsl_syntax.md) | 面向自动化系统的 TSL 语法精简参考。 |
-| [`agent_skill_tsl_functions.md`](./agent_skill_tsl_functions.md) | 面向 agent 的结构化函数目录与调用模板。 |
-
-### 语言对比文档
-
-| 文件 | 内容 |
-|------|------|
-| [`tsl_vs_pascal_common_pitfalls.md`](./tsl_vs_pascal_common_pitfalls.md) | TSL 与 Pascal 的对比及常见迁移易错点。 |
-
-### 问题记录
-
-| 文件 | 内容 |
-|------|------|
-| [`issue_log_public.md`](./issue_log_public.md) | 实际使用 TSL 过程中遇到的问题与解决方案的脱敏公开版本。 |
 
 ---
 
@@ -68,14 +39,14 @@
 - IDE Bridge
 - golden cases 与测试体系
 
-### ✅ 2.0
+### ✅ 0.2.0
 完成基于 **pyTSL / 本地桥接路径** 的执行式验证原型，包括：
 - preflight / smoke / spec / oracle 分层验证
 - live case 模板
 - 本地桥接 smoke 路径
 - 结构化运行时诊断与报告输出
 
-### ✅ 3.0
+### ✅ 0.3.0-0.6.0
 完成基于 **VS Code Extension** 的前端工作台，包括：
 - Sidebar / StatusBar / CodeLens / Commands
 - Connection 配置与 Diagnostic Wizard
@@ -158,7 +129,35 @@ Python 层提供以下能力：
 - `tests/`：测试
 
 ---
+---
 
+## 文档说明
+
+### 全量技术文档
+
+| 文件 | 内容 |
+|------|------|
+| [`tinysoft_syntax_tutorial.md`](./tinysoft_syntax_tutorial.md) | TSL 语法与教程全量参考，涵盖语言基础、控制流、数据类型、TS-SQL 等核心语法内容。 |
+| [`tinysoft_functions.md`](./tinysoft_functions.md) | TSL 内建函数全量参考，收录大量内建函数签名、参数说明与示例。 |
+
+### Agent 精简技术文档
+
+| 文件 | 内容 |
+|------|------|
+| [`agent_skill_tsl_syntax.md`](./agent_skill_tsl_syntax.md) | 面向自动化系统的 TSL 语法精简参考。 |
+| [`agent_skill_tsl_functions.md`](./agent_skill_tsl_functions.md) | 面向 agent 的结构化函数目录与调用模板。 |
+
+### 语言对比文档
+
+| 文件 | 内容 |
+|------|------|
+| [`tsl_vs_pascal_common_pitfalls.md`](./tsl_vs_pascal_common_pitfalls.md) | TSL 与 Pascal 的对比及常见迁移易错点。 |
+
+### 问题记录
+
+| 文件 | 内容 |
+|------|------|
+| [`issue_log_public.md`](./issue_log_public.md) | 实际使用 TSL 过程中遇到的问题与解决方案的脱敏公开版本。 |
 ## 备注
 
 详细使用方式、排障说明与扩展侧说明请分别查看：
